@@ -42,7 +42,7 @@ class _ConnectState extends State<Connect> {
         shape: Border(
           bottom: BorderSide(
             color: colorScheme.outline
-                .withAlpha((255 * 0.2).round()), // withOpacity is deprecated
+                .withAlpha((255 * 0.2).round()),
             width: 1,
           ),
         ),
