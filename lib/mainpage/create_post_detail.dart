@@ -139,7 +139,7 @@ class _CreatePostDetailState extends State<CreatePostDetail> {
                     top: 8,
                     right: 8,
                     child: CircleAvatar(
-                      backgroundColor: Colors.black.withOpacity(0.6),
+                      backgroundColor: Colors.black.withAlpha(153),
                       child: IconButton(
                         icon: const Icon(Icons.close,
                             color: Colors.white, size: 20),

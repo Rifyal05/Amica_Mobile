@@ -204,7 +204,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
                         fontSize: 10,
                         color: isMatched ? theme.colorScheme.onPrimary : theme.colorScheme.primary
                     ),
-                    backgroundColor: isMatched ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
+                    backgroundColor: isMatched ? theme.colorScheme.primary : theme.colorScheme.primary.withAlpha((255 * 0.1).round()),
                     side: BorderSide.none,
                   );
                 }).toList(),

@@ -51,7 +51,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     child: Center(
                       child: CircleAvatar(
-                        backgroundColor: Colors.black.withOpacity(0.5),
+                        backgroundColor: Colors.black.withAlpha(128),
                         child: const Icon(Icons.camera_alt, color: Colors.white),
                       ),
                     ),

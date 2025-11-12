@@ -32,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const MainNavigator()),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -50,7 +50,11 @@ class _LoginPageState extends State<LoginPage> {
             elevation: 0,
             actions: [
               Container(
-                margin: const EdgeInsets.only(right: 16.0, top: 8.0, bottom: 8.0),
+                margin: const EdgeInsets.only(
+                  right: 16.0,
+                  top: 8.0,
+                  bottom: 8.0,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
@@ -58,8 +62,12 @@ class _LoginPageState extends State<LoginPage> {
                 child: IconButton(
                   splashRadius: 20,
                   icon: Icon(
-                    isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
-                    color: isDarkMode ? AppColors.themeIconDark : AppColors.themeIconLight,
+                    isDarkMode
+                        ? Icons.dark_mode_outlined
+                        : Icons.light_mode_outlined,
+                    color: isDarkMode
+                        ? AppColors.themeIconDark
+                        : AppColors.themeIconLight,
                   ),
                   onPressed: () => context.read<ThemeProvider>().toggleTheme(),
                 ),
@@ -81,7 +89,9 @@ class _LoginPageState extends State<LoginPage> {
                           Align(
                             alignment: Alignment.topCenter,
                             child: Image.asset(
-                              isDarkMode ? 'source/images/logo_dark.png' : 'source/images/logo_light.png',
+                              isDarkMode
+                                  ? 'source/images/logo_dark.png'
+                                  : 'source/images/logo_light.png',
                               height: 230,
                               fit: BoxFit.contain,
                             ),
@@ -94,7 +104,10 @@ class _LoginPageState extends State<LoginPage> {
                                 const Text(
                                   "Selamat Datang",
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -102,7 +115,9 @@ class _LoginPageState extends State<LoginPage> {
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -135,10 +150,14 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            _isPasswordVisible
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                           ),
                           onPressed: () {
-                            setState(() => _isPasswordVisible = !_isPasswordVisible);
+                            setState(
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            );
                           },
                         ),
                       ),
@@ -154,20 +173,24 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       child: const Text(
                         "Masuk",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => const ForgotPasswordFlowPage(),
-                        ));
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const ForgotPasswordFlowPage(),
+                          ),
+                        );
                       },
                       child: Text(
                         'Lupa password?',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -177,9 +200,11 @@ class _LoginPageState extends State<LoginPage> {
                         const Text("Belum punya akun?"),
                         TextButton(
                           onPressed: () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => const RegisterPage(),
-                            ));
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const RegisterPage(),
+                              ),
+                            );
                           },
                           child: Text(
                             'Daftar sekarang',
@@ -191,7 +216,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 50,)
+                    SizedBox(height: 50),
                   ],
                 ),
               ),
@@ -200,7 +225,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         if (_isLoading)
           Container(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withAlpha(128),
             child: const Center(child: CircularProgressIndicator()),
           ),
       ],

@@ -41,7 +41,8 @@ class _ConnectState extends State<Connect> {
         elevation: 0,
         shape: Border(
           bottom: BorderSide(
-            color: colorScheme.outline.withOpacity(0.2),
+            color: colorScheme.outline
+                .withAlpha((255 * 0.2).round()), // withOpacity is deprecated
             width: 1,
           ),
         ),
@@ -83,11 +84,12 @@ class _ConnectState extends State<Connect> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withOpacity(0.95),
+                  color: colorScheme.surfaceContainerHighest
+                      .withAlpha((255 * 0.95).round()),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withAlpha((255 * 0.1).round()),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -258,7 +260,7 @@ class _PostCardState extends State<PostCard> {
                   label: Text('#$tag'),
                   padding: EdgeInsets.zero,
                   labelStyle: TextStyle(fontSize: 12, color: colorScheme.primary),
-                  backgroundColor: colorScheme.primary.withOpacity(0.1),
+                  backgroundColor: colorScheme.primary.withAlpha((255 * 0.1).round()),
                   side: BorderSide.none,
                 );
               }).toList(),

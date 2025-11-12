@@ -168,7 +168,7 @@ class _EducativePageState extends State<Educative> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20.0),
                     gradient: LinearGradient(
-                      colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                      colors: [Colors.black.withAlpha(153), Colors.transparent],
                       begin: Alignment.bottomCenter,
                       end: Alignment.center,
                     ),
