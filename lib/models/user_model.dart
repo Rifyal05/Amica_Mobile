@@ -35,14 +35,14 @@ class User {
     const User(
       id: 'user_003',
       username: 'pakarparenting',
-      displayName: 'Dr. Anisa, Sp.A',
+      displayName: 'Dr. Amica, Sp.A',
       avatarUrl: 'https://i.pravatar.cc/150?img=31',
       bannerUrl: 'https://images.pexels.com/photos/1036808/pexels-photo-1036808.jpeg?auto=compress&cs=tinysrgb&w=1260',
       bio: 'Psikolog anak. Menyediakan sumber daya berbasis bukti untuk orang tua hebat.',
     ),
     const User(
       id: 'user_004',
-      username: 'keluargaceria',
+      username: 'keluargaceri',
       displayName: 'Keluarga Ceria',
       avatarUrl: 'https://i.pravatar.cc/150?img=5',
       bannerUrl: 'https://images.pexels.com/photos/1683989/pexels-photo-1683989.jpeg?auto=compress&cs=tinysrgb&w=1260',
