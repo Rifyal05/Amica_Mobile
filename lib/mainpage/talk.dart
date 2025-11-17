@@ -85,10 +85,13 @@ class _TalkState extends State<Talk> {
             bottom: 16.0,
             right: 16.0,
             child: FloatingActionButton(
+              heroTag: 'talk_tab',
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ConnectionsPage(),
-                ));
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ConnectionsPage(),
+                  ),
+                );
               },
               backgroundColor: colorScheme.primary,
               child: Icon(
@@ -139,24 +142,28 @@ class _TalkState extends State<Talk> {
             icon: Icons.public,
             title: 'Into The Light Indonesia',
             subtitle: 'Website dukungan kesehatan jiwa',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (context) => const WebViewPage(
-                title: 'Into The Light ID',
-                url: 'https://www.intothelightid.org/',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const WebViewPage(
+                  title: 'Into The Light ID',
+                  url: 'https://www.intothelightid.org/',
+                ),
               ),
-            )),
+            ),
           ),
           _buildSupportTile(
             context,
             icon: Icons.health_and_safety,
             title: 'Laporan Perundungan Kemkes',
             subtitle: 'Situs resmi Kemenkes RI',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (context) => const WebViewPage(
-                title: 'Laporan Perundungan',
-                url: 'https://perundungan.kemkes.go.id/',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const WebViewPage(
+                  title: 'Laporan Perundungan',
+                  url: 'https://perundungan.kemkes.go.id/',
+                ),
               ),
-            )),
+            ),
           ),
         ],
       ),
@@ -185,12 +192,12 @@ class _TalkState extends State<Talk> {
   }
 
   Widget _buildSupportTile(
-      BuildContext context, {
-        required IconData icon,
-        required String title,
-        required String subtitle,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     return ListTile(
       leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -248,9 +255,9 @@ class _TalkState extends State<Talk> {
         ],
       ),
       onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) => const ChatPage(),
-        ));
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (context) => const ChatPage()));
       },
     );
   }

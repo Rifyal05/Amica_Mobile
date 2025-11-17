@@ -15,9 +15,7 @@ class SdDashboardPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Deteksi Dini'),
-      ),
+      appBar: AppBar(title: const Text('Deteksi Dini')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -26,20 +24,24 @@ class SdDashboardPage extends StatelessWidget {
             ElevatedButton.icon(
               icon: const Icon(Icons.quiz_outlined),
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const SdQuizPage(),
-                ));
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const SdQuizPage()),
+                );
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                textStyle: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               label: const Text('Mulai Kuis Baru'),
             ),
             const SizedBox(height: 32),
             Text(
               'Riwayat Kuis Anda',
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Expanded(
@@ -50,19 +52,27 @@ class SdDashboardPage extends StatelessWidget {
                   return Card(
                     child: ListTile(
                       leading: const Icon(Icons.history),
-                      title: Text('Kuis tanggal ${item['date']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('Skor Kesulitan Total: ${item['score']} (${item['status']})'),
+                      title: Text(
+                        'Kuis tanggal ${item['date']}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        'Skor Kesulitan Total: ${item['score']} (${item['status']})',
+                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => const SdResultsPage(answers: []),
-                        ));
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const SdResultsPage(answers: []),
+                          ),
+                        );
                       },
                     ),
                   );
                 },
               ),
-            )
+            ),
           ],
         ),
       ),

@@ -29,10 +29,7 @@ class ArticleDetailPage extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              background: Image.network(
-                article.imageUrl,
-                fit: BoxFit.cover,
-              ),
+              background: Image.network(article.imageUrl, fit: BoxFit.cover),
             ),
           ),
           SliverToBoxAdapter(
@@ -43,7 +40,9 @@ class ArticleDetailPage extends StatelessWidget {
                 children: [
                   Wrap(
                     spacing: 8.0,
-                    children: article.tags.map((tag) => Chip(label: Text('#$tag'))).toList(),
+                    children: article.tags
+                        .map((tag) => Chip(label: Text('#$tag')))
+                        .toList(),
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -65,7 +64,9 @@ class ArticleDetailPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     'Sumber Informasi',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -77,11 +78,11 @@ class ArticleDetailPage extends StatelessWidget {
                     icon: const Icon(Icons.launch),
                     label: const Text('Baca di Situs Asli'),
                     onPressed: () => _launchURL(article.sourceUrl),
-                  )
+                  ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -92,7 +93,9 @@ class ArticleDetailPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Text(
         title,
-        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        style: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

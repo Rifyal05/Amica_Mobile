@@ -8,9 +8,11 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final _displayNameController = TextEditingController(text: 'Bunda Hebat');
-  final _usernameController = TextEditingController(text: '@bundahebat123');
-  final _bioController = TextEditingController(text: 'Menyebarkan positivitas dan saling mendukung. Di sini untuk mendengar dan membantu.');
+  final _displayNameController = TextEditingController(text: 'Username-01');
+  final _usernameController = TextEditingController(text: '@username123');
+  final _bioController = TextEditingController(
+    text: 'Lam oakdak oadkd jiad ijajd sadd dadkd jjdsjd ajdad',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     child: Center(
                       child: CircleAvatar(
                         backgroundColor: Colors.black.withAlpha(128),
-                        child: const Icon(Icons.camera_alt, color: Colors.white),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -67,7 +72,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         backgroundColor: theme.colorScheme.surface,
                         child: const CircleAvatar(
                           radius: 50,
-                          backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=12'),
+                          backgroundImage: NetworkImage(
+                            'https://i.pravatar.cc/150?img=12',
+                          ),
                         ),
                       ),
                       InkWell(
@@ -75,7 +82,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: theme.colorScheme.primary,
-                          child: const Icon(Icons.edit, size: 20, color: Colors.white),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],

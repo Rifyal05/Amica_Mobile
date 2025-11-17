@@ -13,10 +13,10 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  shared_preferences: ^2.5.3
-  provider: ^6.1.5+1
-  intl: ^0.20.2
+  cupertino_icons:
+  shared_preferences:
+  provider:
+  intl:
   url_launcher:
   webview_flutter:
   image_picker:

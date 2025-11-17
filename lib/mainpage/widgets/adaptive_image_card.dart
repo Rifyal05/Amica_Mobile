@@ -22,7 +22,10 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
   void _fetchImageInfo() {
     final image = NetworkImage(widget.imageUrl);
     _imageStream = image.resolve(const ImageConfiguration());
-    final listener = ImageStreamListener((ImageInfo info, bool synchronousCall) {
+    final listener = ImageStreamListener((
+      ImageInfo info,
+      bool synchronousCall,
+    ) {
       if (mounted) {
         setState(() {
           _imageInfo = info;
@@ -66,26 +69,20 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
         child: AspectRatio(
           aspectRatio: _aspectRatio!,
           child: Container(
-            color: theme.brightness == Brightness.dark ? Colors.black : theme.colorScheme.surfaceContainer,
-            child: Image.network(
-              widget.imageUrl,
-              fit: BoxFit.contain,
-            ),
+            color: theme.brightness == Brightness.dark
+                ? Colors.black
+                : theme.colorScheme.surfaceContainer,
+            child: Image.network(widget.imageUrl, fit: BoxFit.contain),
           ),
         ),
       );
-    }
-
-    else {
+    } else {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12.0),
         child: SizedBox(
           height: maxImageHeight,
           width: double.infinity,
-          child: Image.network(
-            widget.imageUrl,
-            fit: BoxFit.cover,
-          ),
+          child: Image.network(widget.imageUrl, fit: BoxFit.cover),
         ),
       );
     }

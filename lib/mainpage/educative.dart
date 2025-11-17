@@ -50,6 +50,7 @@ class _EducativePageState extends State<Educative> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'article_tab',
         onPressed: () {
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) => const SdDashboardPage(),

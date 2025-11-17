@@ -5,11 +5,7 @@ class WebViewPage extends StatefulWidget {
   final String title;
   final String url;
 
-  const WebViewPage({
-    super.key,
-    required this.title,
-    required this.url,
-  });
+  const WebViewPage({super.key, required this.title, required this.url});
 
   @override
   State<WebViewPage> createState() => _WebViewPageState();
@@ -54,7 +50,7 @@ class _WebViewPageState extends State<WebViewPage> {
                   child: CircularProgressIndicator(strokeWidth: 2.0),
                 ),
               ),
-            )
+            ),
         ],
       ),
       body: WebViewWidget(controller: _controller),

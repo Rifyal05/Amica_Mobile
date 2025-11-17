@@ -7,9 +7,7 @@ class SdResultsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Hasil Kuis'),
-      ),
+      appBar: AppBar(title: const Text('Hasil Kuis')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),

@@ -38,12 +38,15 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
             TextButton(
-              child: const Text('Keluar', style: TextStyle(color: Colors.redAccent)),
+              child: const Text(
+                'Keluar',
+                style: TextStyle(color: Colors.redAccent),
+              ),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const LoginPage()),
-                      (Route<dynamic> route) => false,
+                  (Route<dynamic> route) => false,
                 );
               },
             ),
@@ -53,7 +56,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final fontProvider = context.watch<FontProvider>();
@@ -61,9 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final isDarkMode = themeProvider.isDarkMode(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pengaturan'),
-      ),
+      appBar: AppBar(title: const Text('Pengaturan')),
       body: ListView(
         children: [
           _buildSectionHeader('Akun'),
@@ -71,18 +71,22 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.email_outlined),
             title: const Text('Ganti Email'),
             onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ChangeEmailPage(),
-              ));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ChangeEmailPage(),
+                ),
+              );
             },
           ),
           ListTile(
             leading: const Icon(Icons.lock_outline),
             title: const Text('Ganti Password'),
             onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ChangePasswordPage(),
-              ));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ChangePasswordPage(),
+                ),
+              );
             },
           ),
           const Divider(),
@@ -96,7 +100,10 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -106,7 +113,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   min: 0.8,
                   max: 1.5,
                   divisions: 7,
-                  label: '${(fontProvider.fontScale * 100).toStringAsFixed(0)}%',
+                  label:
+                      '${(fontProvider.fontScale * 100).toStringAsFixed(0)}%',
                   onChanged: (double value) {
                     context.read<FontProvider>().setFontScale(value);
                   },
@@ -120,9 +128,9 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.feedback_outlined),
             title: const Text('Beri Masukan'),
             onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const FeedbackPage(),
-              ));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const FeedbackPage()),
+              );
             },
           ),
           ListTile(
@@ -142,7 +150,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
-            title: const Text('Keluar', style: TextStyle(color: Colors.redAccent)),
+            title: const Text(
+              'Keluar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
             onTap: _showLogoutConfirmation,
           ),
         ],

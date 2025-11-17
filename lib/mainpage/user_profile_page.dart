@@ -12,7 +12,8 @@ class UserProfilePage extends StatefulWidget {
   State<UserProfilePage> createState() => _UserProfilePageState();
 }
 
-class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProviderStateMixin {
+class _UserProfilePageState extends State<UserProfilePage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final bool _isCollectionPrivate = true;
   bool _isFollowing = false;
@@ -25,9 +26,15 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _userPosts = Post.dummyPosts.where((p) => p.user.id == widget.user.id).toList();
-    _imagePosts = _userPosts.where((p) => p.imageUrl != null || p.assetPath != null).toList();
-    _textPosts = _userPosts.where((p) => p.imageUrl == null && p.assetPath == null).toList();
+    _userPosts = Post.dummyPosts
+        .where((p) => p.user.id == widget.user.id)
+        .toList();
+    _imagePosts = _userPosts
+        .where((p) => p.imageUrl != null || p.assetPath != null)
+        .toList();
+    _textPosts = _userPosts
+        .where((p) => p.imageUrl == null && p.assetPath == null)
+        .toList();
   }
 
   @override
@@ -51,7 +58,10 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
             ),
             ListTile(
               leading: const Icon(Icons.block, color: Colors.redAccent),
-              title: const Text('Blokir Pengguna', style: TextStyle(color: Colors.redAccent)),
+              title: const Text(
+                'Blokir Pengguna',
+                style: TextStyle(color: Colors.redAccent),
+              ),
               onTap: () {
                 Navigator.pop(context);
               },
@@ -69,17 +79,12 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       body: SafeArea(
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              SliverToBoxAdapter(
-                child: _buildProfileDetails(context),
-              ),
+              SliverToBoxAdapter(child: _buildProfileDetails(context)),
               SliverPersistentHeader(
                 delegate: _SliverAppBarDelegate(
                   TabBar(
@@ -145,12 +150,16 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
         const SizedBox(height: 60),
         Text(
           widget.user.displayName,
-          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           widget.user.username,
-          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 16),
         Padding(
@@ -191,9 +200,19 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
     final theme = Theme.of(context);
     return Column(
       children: [
-        Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -205,17 +224,17 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
           flex: 3,
           child: _isFollowing
               ? FilledButton.tonal(
-            onPressed: () {
-              setState(() => _isFollowing = false);
-            },
-            child: const Text('Mengikuti'),
-          )
+                  onPressed: () {
+                    setState(() => _isFollowing = false);
+                  },
+                  child: const Text('Mengikuti'),
+                )
               : FilledButton(
-            onPressed: () {
-              setState(() => _isFollowing = true);
-            },
-            child: const Text('Ikuti'),
-          ),
+                  onPressed: () {
+                    setState(() => _isFollowing = true);
+                  },
+                  child: const Text('Ikuti'),
+                ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -226,10 +245,7 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
           ),
         ),
         const SizedBox(width: 12),
-        IconButton(
-          onPressed: _showUserMenu,
-          icon: const Icon(Icons.more_vert),
-        ),
+        IconButton(onPressed: _showUserMenu, icon: const Icon(Icons.more_vert)),
       ],
     );
   }
@@ -257,20 +273,23 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
         final post = posts[index];
         return InkWell(
           onTap: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (context) => PostDetailPage(posts: posts, initialIndex: index),
-            ));
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) =>
+                    PostDetailPage(posts: posts, initialIndex: index),
+              ),
+            );
           },
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12.0),
             child: post.assetPath != null
                 ? Image.asset(post.assetPath!, fit: BoxFit.cover)
                 : Image.network(
-              post.imageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.broken_image),
-            ),
+                    post.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.broken_image),
+                  ),
           ),
         );
       },
@@ -306,7 +325,11 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: Theme.of(context).colorScheme.surface,
       child: _tabBar,

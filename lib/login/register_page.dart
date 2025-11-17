@@ -29,10 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
     );
   }
 
@@ -73,7 +70,10 @@ class _RegisterPageState extends State<RegisterPage> {
     final confirmPassword = _confirmPasswordController.text;
 
     // [Branch 1]: Pengecekan field kosong
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
       _showErrorSnackbar('Semua field wajib diisi.');
       return;
     }
@@ -105,7 +105,7 @@ class _RegisterPageState extends State<RegisterPage> {
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const MainNavigator()),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -132,8 +132,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     const Text(
                       "Satu Langkah Lagi",
                       textAlign: TextAlign.center,
-                      style:
-                      TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -185,7 +187,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           onPressed: () {
                             setState(
-                                    () => _isPasswordVisible = !_isPasswordVisible);
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            );
                           },
                         ),
                       ),
@@ -207,8 +210,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                 : Icons.visibility_outlined,
                           ),
                           onPressed: () {
-                            setState(() => _isConfirmPasswordVisible =
-                            !_isConfirmPasswordVisible);
+                            setState(
+                              () => _isConfirmPasswordVisible =
+                                  !_isConfirmPasswordVisible,
+                            );
                           },
                         ),
                       ),
@@ -225,7 +230,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       child: const Text(
                         "Daftar",
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
