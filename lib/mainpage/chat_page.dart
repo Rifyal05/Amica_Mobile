@@ -17,7 +17,7 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: const Row(
           children: [
-            CircleAvatar(backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=31')),
+            CircleAvatar(backgroundImage: NetworkImage('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrHHSURcy1oXxHIo0Kp4TBOAI_I-X0PDCnGg&s')),
             SizedBox(width: 12),
             Text('Dr. Anisa, Sp.A'),
           ],
