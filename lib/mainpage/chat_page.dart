@@ -7,8 +7,31 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
+class Message {
+  final String text;
+  final bool isMe;
+  final String time;
+
+  Message(this.text, this.isMe, this.time);
+}
+
 class _ChatPageState extends State<ChatPage> {
   final _messageController = TextEditingController();
+
+  final List<Message> _messages = [
+    Message('Sama-sama, semoga membantu ya!', false, '10:05'),
+    Message('Terima kasih banyak atas sarannya, Dok.', true, '10:04'),
+  ];
+
+  void _sendMessage() {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _messages.insert(0, Message(text, true, 'Now'));
+    });
+    _messageController.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +49,18 @@ class _ChatPageState extends State<ChatPage> {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
+            child: ListView.builder(
               reverse: true,
               padding: const EdgeInsets.all(16.0),
-              children: const [
-                _MessageBubble(text: 'Sama-sama, semoga membantu ya!', isMe: false, time: '10:05'),
-                _MessageBubble(text: 'Terima kasih banyak atas sarannya, Dok.', isMe: true, time: '10:04'),
-              ],
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                return _MessageBubble(
+                  text: message.text,
+                  isMe: message.isMe,
+                  time: message.time,
+                );
+              },
             ),
           ),
           _buildMessageInput(theme),
@@ -48,10 +76,6 @@ class _ChatPageState extends State<ChatPage> {
       child: SafeArea(
         child: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () {},
-            ),
             Expanded(
               child: TextField(
                 controller: _messageController,
@@ -69,9 +93,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
             IconButton(
               icon: Icon(Icons.send, color: theme.colorScheme.primary),
-              onPressed: () {
-                _messageController.clear();
-              },
+              onPressed: _sendMessage, // Panggil fungsi _sendMessage yang baru
             ),
           ],
         ),
@@ -99,6 +121,7 @@ class _MessageBubble extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4.0),
         padding: const EdgeInsets.all(12.0),
+        constraints: const BoxConstraints(maxWidth: 250),
         decoration: BoxDecoration(
           color: isMe ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.only(

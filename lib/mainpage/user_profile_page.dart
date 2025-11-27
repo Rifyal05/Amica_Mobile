@@ -54,6 +54,9 @@ class _UserProfilePageState extends State<UserProfilePage>
               title: const Text('Laporkan Pengguna'),
               onTap: () {
                 Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Pengguna berhasil dilaporkan. Kami akan segera meninjau.')),
+                );
               },
             ),
             ListTile(
@@ -64,6 +67,9 @@ class _UserProfilePageState extends State<UserProfilePage>
               ),
               onTap: () {
                 Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Pengguna telah diblokir.')),
+                );
               },
             ),
           ],
@@ -224,17 +230,17 @@ class _UserProfilePageState extends State<UserProfilePage>
           flex: 3,
           child: _isFollowing
               ? FilledButton.tonal(
-                  onPressed: () {
-                    setState(() => _isFollowing = false);
-                  },
-                  child: const Text('Mengikuti'),
-                )
+            onPressed: () {
+              setState(() => _isFollowing = false);
+            },
+            child: const Text('Mengikuti'),
+          )
               : FilledButton(
-                  onPressed: () {
-                    setState(() => _isFollowing = true);
-                  },
-                  child: const Text('Ikuti'),
-                ),
+            onPressed: () {
+              setState(() => _isFollowing = true);
+            },
+            child: const Text('Ikuti'),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -285,11 +291,11 @@ class _UserProfilePageState extends State<UserProfilePage>
             child: post.assetPath != null
                 ? Image.asset(post.assetPath!, fit: BoxFit.cover)
                 : Image.network(
-                    post.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.broken_image),
-                  ),
+              post.imageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.broken_image),
+            ),
           ),
         );
       },
@@ -326,10 +332,10 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+      BuildContext context,
+      double shrinkOffset,
+      bool overlapsContent,
+      ) {
     return Container(
       color: Theme.of(context).colorScheme.surface,
       child: _tabBar,

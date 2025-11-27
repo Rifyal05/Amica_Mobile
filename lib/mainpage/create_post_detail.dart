@@ -70,8 +70,7 @@ class _CreatePostDetailState extends State<CreatePostDetail> {
   Fungsi ini memiliki 3 cabang keputusan utama:
   1. [Branch 1]: Pengecekan apakah postingan benar-benar kosong (tidak ada gambar
                  DAN tidak ada caption).
-  2. [Branch 2]: Pengecekan apakah panjang caption melebihi batas maksimum
-                 (misalnya 1000 karakter).
+  2. [Branch 2]: Pengecekan apakah panjang caption melebihi batas maksimum (2500 karakter).
   3. [Branch 3]: Jalur sukses, di mana postingan dianggap valid dan proses
                  navigasi (simulasi pengiriman) dijalankan.
 
@@ -79,15 +78,16 @@ class _CreatePostDetailState extends State<CreatePostDetail> {
   1. Aksi: Tidak memilih gambar dan tidak mengisi caption, lalu tekan "Bagikan".
      -> Hasil: Mengeksekusi Branch 1. Menampilkan snackbar "Caption atau gambar
               tidak boleh kosong.".
-  2. Aksi: Isi caption dengan teks yang sangat panjang (lebih dari 1000 karakter).
+  2. Aksi: Isi caption dengan teks yang sangat panjang (lebih dari 2500 karakter).
      -> Hasil: Mengeksekusi Branch 2. Menampilkan snackbar "Caption tidak boleh
-              lebih dari 1000 karakter.".
+              lebih dari 2500 karakter.".
   3. Aksi: Isi caption yang valid (misal: "Halo semua") atau pilih sebuah gambar.
      -> Hasil: Mengeksekusi Branch 3. Aplikasi akan kembali ke halaman utama.
   =============================================================================
   */
   void _sharePost() {
     final caption = _captionController.text.trim();
+    final int maxCaptionLength = 2500;
 
     // [Branch 1]: Pengecekan konten kosong
     if (caption.isEmpty && _currentImageFile == null) {
@@ -96,8 +96,8 @@ class _CreatePostDetailState extends State<CreatePostDetail> {
     }
 
     // [Branch 2]: Pengecekan panjang caption
-    if (caption.length > 1000) {
-      _showErrorSnackbar('Caption tidak boleh lebih dari 1000 karakter.');
+    if (caption.length > maxCaptionLength) {
+      _showErrorSnackbar('Caption tidak boleh lebih dari $maxCaptionLength karakter.');
       return;
     }
 

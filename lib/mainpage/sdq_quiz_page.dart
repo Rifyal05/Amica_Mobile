@@ -41,46 +41,23 @@ class _SdQuizPageState extends State<SdQuizPage> {
     'Memiliki perhatian yang baik terhadap apapun, mampu menyelesaikan tugas atau pekerjaan rumah sampai selesai'
   ];
 
-  /*
-  =============================================================================
-  ANALISIS WHITE-BOX TESTING: FUNGSI _onAnswerSelected
-  -----------------------------------------------------------------------------
-  Teknik: Branch Coverage
-  Tujuan: Memvalidasi alur navigasi setelah pengguna menjawab pertanyaan,
-          memastikan semua jalur logika dieksekusi.
-
-  Kode ini memiliki dua cabang keputusan yang jelas dan saling eksklusif:
-  1. [Branch 1]: Pengecekan 'if (questionIndex < _questions.length - 1)'.
-                 Jalur ini dieksekusi jika kuis BELUM selesai (pertanyaan 1-24).
-  2. [Branch 2]: Jalur 'else'.
-                 Jalur ini dieksekusi jika kuis TELAH selesai (setelah menjawab
-                 pertanyaan 25, di mana questionIndex = 24).
-
-  Kasus Uji untuk Mencapai 100% Branch Coverage:
-  1. Aksi: Jawab pertanyaan nomor 5 (atau nomor apa pun < 25).
-     -> Hasil: Mengeksekusi Branch 1. Memanggil `_pageController.nextPage()` dan
-              aplikasi berpindah ke pertanyaan berikutnya.
-  2. Aksi: Jawab pertanyaan terakhir (nomor 25).
-     -> Hasil: Mengeksekusi Branch 2. Memanggil `Navigator.pushReplacement()` dan
-              aplikasi berpindah ke halaman `SdResultsPage`.
-  =============================================================================
-  */
   void _onAnswerSelected(int questionIndex, int answerValue) {
     setState(() {
       _answers[questionIndex] = answerValue;
     });
 
-    // [Branch 1]: Kuis belum selesai.
     if (questionIndex < _questions.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     }
-    // [Branch 2]: Kuis telah selesai.
     else {
       Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (context) => SdResultsPage(answers: _answers),
+        builder: (context) => SdResultsPage(
+          answers: _answers,
+          fullInterpretationResult: MOCK_INTERPRETATION_RESULT,
+        ),
       ));
     }
   }

@@ -18,8 +18,9 @@ class ThemeProvider with ChangeNotifier {
   }
 
   Future<void> toggleTheme() async {
-    final newThemeMode =
-    _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    final newThemeMode = _themeMode == ThemeMode.dark
+        ? ThemeMode.light
+        : ThemeMode.dark;
     await setThemeMode(newThemeMode);
   }
 

@@ -6,7 +6,9 @@ import 'package:amica/login/login_page.dart';
 import 'provider/font_provider.dart';
 import 'provider/navigation_provider.dart';
 import 'provider/theme_provider.dart';
+import 'provider/auth_provider.dart';
 import 'theme/colors.dart';
+import 'navigation/main_navigator.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,9 +18,10 @@ Future<void> main() async {
   final initialThemeMode = ThemeMode.values[themeIndex];
   final initialFontScale = prefs.getDouble('fontScale') ?? 1.0;
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  final authProvider = AuthProvider();
+  await authProvider.checkAuthStatus();
+
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   runApp(
     MultiProvider(
@@ -29,9 +32,8 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (context) => FontProvider(initialFontScale),
         ),
-        ChangeNotifierProvider(
-          create: (context) => NavigationProvider(),
-        )
+        ChangeNotifierProvider(create: (context) => NavigationProvider()),
+        ChangeNotifierProvider.value(value: authProvider),
       ],
       child: const MyApp(),
     ),
@@ -45,20 +47,24 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final fontProvider = context.watch<FontProvider>();
+    final authStatus = context.watch<AuthProvider>().isLoggedIn;
 
     final baseTheme = ThemeData(
       brightness: Brightness.light,
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primarySeedLight,
-          brightness: Brightness.light),
+        seedColor: AppColors.primarySeedLight,
+        brightness: Brightness.light,
+      ),
     );
 
     final baseDarkTheme = ThemeData(
       brightness: Brightness.dark,
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primarySeedDark, brightness: Brightness.dark),
+        seedColor: AppColors.primarySeedDark,
+        brightness: Brightness.dark,
+      ),
     );
 
     return MaterialApp(
@@ -68,12 +74,12 @@ class MyApp extends StatelessWidget {
       theme: baseTheme,
       darkTheme: baseDarkTheme,
       locale: const Locale('id', 'ID'),
-      home: const LoginPage(),
+      home: authStatus ? const MainNavigator() : const LoginPage(),
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(fontProvider.fontScale),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(fontProvider.fontScale)),
           child: child!,
         );
       },

@@ -162,6 +162,9 @@ class _PostCardState extends State<PostCard> {
               title: const Text('Ikuti Pengguna'),
               onTap: () {
                 Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Anda mulai mengikuti ${widget.post.user.displayName}.')),
+                );
               },
             ),
             ListTile(
@@ -169,6 +172,9 @@ class _PostCardState extends State<PostCard> {
               title: const Text('Laporkan Postingan'),
               onTap: () {
                 Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Postingan berhasil dilaporkan. Terima kasih atas bantuan Anda.')),
+                );
               },
             ),
           ],

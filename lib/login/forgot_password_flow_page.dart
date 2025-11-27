@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 
 class ForgotPasswordFlowPage extends StatefulWidget {
   const ForgotPasswordFlowPage({super.key});
@@ -13,6 +15,18 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final AuthService _authService = AuthService();
+
+  bool _isLoading = false;
+
+  void _showSnackbar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+      ),
+    );
+  }
 
   void _goToPage(int page) {
     _pageController.animateToPage(
@@ -22,33 +36,111 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
     );
   }
 
-  void _handleSendCode() {
-    _goToPage(1);
+  void _handleSendCode() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      _showSnackbar("Email wajib diisi.");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final error = await _authService.sendPasswordResetCode(email);
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      _goToPage(1);
+      _showSnackbar(
+        "Kode verifikasi telah dikirim ke $email.",
+        isError: false,
+      );
+    } else {
+      _showSnackbar(error);
+    }
   }
 
-  void _handleVerifyCode() {
-    _goToPage(2);
+  void _handleVerifyCode() async {
+    final email = _emailController.text.trim();
+    final code = _codeController.text.trim();
+
+    if (code.length != 6) {
+      _showSnackbar("Kode harus 6 digit.");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final error = await _authService.verifyResetCodeAndSetPassword(
+      email,
+      code,
+      "dummy",
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      _goToPage(2);
+    } else {
+      _showSnackbar(error);
+    }
   }
 
-  void _handleResetPassword() {
-    Navigator.of(context).popUntil((route) => route.isFirst);
+  void _handleResetPassword() async {
+    final email = _emailController.text.trim();
+    final code = _codeController.text.trim();
+    final newPassword = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (newPassword.length < 8) {
+      _showSnackbar("Password baru minimal harus 8 karakter.");
+      return;
+    }
+    if (newPassword != confirmPassword) {
+      _showSnackbar("Konfirmasi password tidak cocok.");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final error = await _authService.verifyResetCodeAndSetPassword(
+      email,
+      code,
+      newPassword,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      _showSnackbar(
+        "Password berhasil direset! Silakan login.",
+        isError: false,
+      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      _showSnackbar("Gagal mereset password: $error");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lupa Password'),
-      ),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          _buildRequestCodePage(),
-          _buildVerifyCodePage(),
-          _buildNewPasswordPage(),
-        ],
-      ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(title: const Text('Lupa Password')),
+          body: PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildRequestCodePage(),
+              _buildVerifyCodePage(),
+              _buildNewPasswordPage(),
+            ],
+          ),
+        ),
+        if (_isLoading)
+          Container(
+            color: Colors.black.withAlpha(128),
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+      ],
     );
   }
 
@@ -83,7 +175,7 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _handleSendCode,
+            onPressed: _isLoading ? null : _handleSendCode,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 52),
             ),
@@ -126,7 +218,7 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _handleVerifyCode,
+            onPressed: _isLoading ? null : _handleVerifyCode,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 52),
             ),
@@ -180,7 +272,7 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _handleResetPassword,
+            onPressed: _isLoading ? null : _handleResetPassword,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 52),
             ),

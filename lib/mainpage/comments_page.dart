@@ -50,6 +50,63 @@ class _CommentsPageState extends State<CommentsPage> {
     _focusNode.unfocus();
   }
 
+  Future<void> _sendComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    final originalReplyTo = _replyingToComment;
+    _commentController.clear();
+    _focusNode.unfocus();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Mengirim dan memproses komentar...')),
+    );
+
+    await Future.delayed(const Duration(milliseconds: 800));
+    final moderationStatus = _simulateModeration(text);
+    _cancelReply();
+
+    if (moderationStatus == 'approved') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Komentar terkirim!')),
+      );
+    } else {
+      _showModerationDialog(moderationStatus);
+    }
+  }
+
+  String _simulateModeration(String text) {
+    if (text.toLowerCase().contains('kasar') ||
+        text.toLowerCase().contains('benci') ||
+        text.toLowerCase().contains('hate speech')) {
+      return 'rejected';
+    }
+
+
+    return 'approved';
+  }
+
+  void _showModerationDialog(String status) {
+    if (status == 'rejected') {
+      const String title = 'Komentar Dihapus Otomatis';
+      const String content = 'Komentar Anda melanggar kebijakan komunitas (terdeteksi ujaran kebencian). Komentar tidak akan ditampilkan.';
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(title, style: TextStyle(color: Colors.red)),
+          content: const Text(content),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _focusNode.dispose();
@@ -148,10 +205,7 @@ class _CommentsPageState extends State<CommentsPage> {
                 ),
                 IconButton(
                   icon: Icon(Icons.send, color: theme.colorScheme.primary),
-                  onPressed: () {
-                    _commentController.clear();
-                    _cancelReply();
-                  },
+                  onPressed: _sendComment,
                 ),
               ],
             ),

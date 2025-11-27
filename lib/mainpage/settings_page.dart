@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../provider/font_provider.dart';
 import '../provider/theme_provider.dart';
+import 'package:amica/mainpage/blocked_user_page.dart';
+
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -89,6 +91,19 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             },
           ),
+
+          ListTile(
+            leading: const Icon(Icons.block),
+            title: const Text('Daftar Pengguna Diblokir'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const BlockedUsersPage(),
+                ),
+              );
+            },
+          ),
+
           const Divider(),
           _buildSectionHeader('Tampilan'),
           SwitchListTile(

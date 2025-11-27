@@ -1,7 +1,8 @@
 import 'package:amica/login/register_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../navigation/main_navigator.dart';
+import '../navigation/main_navigator.dart'; // <--- Wajib diimport
+import '../provider/auth_provider.dart'; // <--- Wajib diimport
 import '../provider/theme_provider.dart';
 import '../theme/colors.dart';
 import 'forgot_password_flow_page.dart';
@@ -26,14 +27,43 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+    );
+  }
+
   void _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorSnackbar('Email dan Password wajib diisi.');
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+    if (!emailRegex.hasMatch(email)) {
+      _showErrorSnackbar('Format email tidak valid.');
+      return;
+    }
+
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
+
+    final authProvider = context.read<AuthProvider>();
+
+    final errorMessage = await authProvider.attemptLogin(email, password);
+
     if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const MainNavigator()),
-        (route) => false,
-      );
+      setState(() => _isLoading = false);
+
+      if (errorMessage != null) {
+        _showErrorSnackbar(errorMessage);
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainNavigator()),
+          (Route<dynamic> route) => false,
+        );
+      }
     }
   }
 
