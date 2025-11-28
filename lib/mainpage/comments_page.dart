@@ -76,8 +76,7 @@ class _CommentsPageState extends State<CommentsPage> {
   }
 
   String _simulateModeration(String text) {
-    if (text.toLowerCase().contains('kasar') ||
-        text.toLowerCase().contains('benci') ||
+    if (text.toLowerCase().contains('abusive') ||
         text.toLowerCase().contains('hate speech')) {
       return 'rejected';
     }
