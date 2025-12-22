@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
+import '../provider/auth_provider.dart';
 
 class ForgotPasswordFlowPage extends StatefulWidget {
   const ForgotPasswordFlowPage({super.key});
@@ -15,7 +15,6 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
 
@@ -45,7 +44,7 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
     }
 
     setState(() => _isLoading = true);
-    final error = await _authService.sendPasswordResetCode(email);
+    final error = await context.read<AuthProvider>().sendResetCode(email);
     setState(() => _isLoading = false);
 
     if (error == null) {
@@ -69,11 +68,7 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
     }
 
     setState(() => _isLoading = true);
-    final error = await _authService.verifyResetCodeAndSetPassword(
-      email,
-      code,
-      "dummy",
-    );
+    final error = await context.read<AuthProvider>().verifyResetCode(email, code);
 
     setState(() => _isLoading = false);
 
@@ -90,8 +85,8 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
     final newPassword = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    if (newPassword.length < 8) {
-      _showSnackbar("Password baru minimal harus 8 karakter.");
+    if (newPassword.length < 6) {
+      _showSnackbar("Password baru minimal harus 6 karakter.");
       return;
     }
     if (newPassword != confirmPassword) {
@@ -100,7 +95,7 @@ class _ForgotPasswordFlowPageState extends State<ForgotPasswordFlowPage> {
     }
 
     setState(() => _isLoading = true);
-    final error = await _authService.verifyResetCodeAndSetPassword(
+    final error = await context.read<AuthProvider>().resetPasswordFinish(
       email,
       code,
       newPassword,

@@ -7,6 +7,7 @@ class ArticleDetailPage extends StatelessWidget {
   const ArticleDetailPage({super.key, required this.article});
 
   Future<void> _launchURL(String url) async {
+    if (url.isEmpty) return;
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       debugPrint('Could not launch $url');
@@ -16,6 +17,10 @@ class ArticleDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    List<String> paragraphs = article.content.split('\n');
+    paragraphs = paragraphs.where((text) => text.trim().isNotEmpty).toList();
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -25,11 +30,20 @@ class ArticleDetailPage extends StatelessWidget {
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 article.title,
-                style: const TextStyle(fontSize: 16.0),
+                style: const TextStyle(
+                  fontSize: 16.0,
+                  color: Colors.white,
+                  shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              background: Image.network(article.imageUrl, fit: BoxFit.cover),
+              background: Image.network(
+                article.imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    Container(color: Colors.grey),
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -38,30 +52,72 @@ class ArticleDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Meta Data (Author & Date)
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: theme.colorScheme.primary,
+                        child: Text(
+                          article.author[0],
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(article.author, style: theme.textTheme.bodyMedium),
+                      const Spacer(),
+                      Text(article.createdAt, style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Tags
                   Wrap(
                     spacing: 8.0,
+                    runSpacing: 4.0,
                     children: article.tags
-                        .map((tag) => Chip(label: Text('#$tag')))
+                        .map(
+                          (tag) => Chip(
+                            label: Text('#$tag'),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                          ),
+                        )
                         .toList(),
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    article.content.split('\n\n').first,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
+
+                  // Content
+                  if (paragraphs.isNotEmpty) ...[
+                    // Highlight Paragraf Pertama
+                    Text(
+                      paragraphs.first,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  ...article.content.split('\n\n').skip(1).map((paragraph) {
-                    if (paragraph.startsWith(RegExp(r'[0-9]\.'))) {
-                      return _buildSectionTitle(theme, paragraph);
-                    }
-                    return _buildParagraph(paragraph);
-                  }),
+                    const SizedBox(height: 16),
+
+                    // Sisa Paragraf
+                    ...paragraphs.skip(1).map((paragraph) {
+                      // Deteksi Sub-Judul (misal diawali angka dan titik, contoh "1. Judul")
+                      if (paragraph.trim().startsWith(RegExp(r'^\d+\.'))) {
+                        return _buildSectionTitle(theme, paragraph);
+                      }
+                      return _buildParagraph(paragraph);
+                    }),
+                  ] else
+                    const Text("Belum ada konten."),
+
                   const SizedBox(height: 32),
                   const Divider(),
                   const SizedBox(height: 16),
+
+                  // Sumber
                   Text(
                     'Sumber Informasi',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -74,11 +130,12 @@ class ArticleDetailPage extends StatelessWidget {
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.launch),
-                    label: const Text('Baca di Situs Asli'),
-                    onPressed: () => _launchURL(article.sourceUrl),
-                  ),
+                  if (article.sourceUrl.isNotEmpty)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.launch),
+                      label: const Text('Baca di Situs Asli'),
+                      onPressed: () => _launchURL(article.sourceUrl),
+                    ),
                 ],
               ),
             ),
@@ -90,7 +147,7 @@ class ArticleDetailPage extends StatelessWidget {
 
   Widget _buildSectionTitle(ThemeData theme, String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
       child: Text(
         title,
         style: theme.textTheme.titleLarge?.copyWith(
@@ -102,7 +159,7 @@ class ArticleDetailPage extends StatelessWidget {
 
   Widget _buildParagraph(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.only(bottom: 12.0),
       child: Text(
         text,
         textAlign: TextAlign.justify,

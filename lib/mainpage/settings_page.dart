@@ -5,10 +5,11 @@ import 'package:amica/mainpage/feedback_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../provider/chat_provider.dart';
 import '../provider/font_provider.dart';
 import '../provider/theme_provider.dart';
+import '../provider/auth_provider.dart';
 import 'package:amica/mainpage/blocked_user_page.dart';
-
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -44,12 +45,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 'Keluar',
                 style: TextStyle(color: Colors.redAccent),
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(dialogContext).pop();
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                  (Route<dynamic> route) => false,
-                );
+
+                context.read<ChatProvider>().clearData();
+                await context.read<AuthProvider>().performLogout();
+
+                if (mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    (Route<dynamic> route) => false,
+                  );
+                }
               },
             ),
           ],
@@ -91,7 +98,6 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             },
           ),
-
           ListTile(
             leading: const Icon(Icons.block),
             title: const Text('Daftar Pengguna Diblokir'),
@@ -103,7 +109,6 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             },
           ),
-
           const Divider(),
           _buildSectionHeader('Tampilan'),
           SwitchListTile(

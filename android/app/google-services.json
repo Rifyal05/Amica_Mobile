@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1020000184296",
+    "project_id": "amica-project-db1d5",
+    "storage_bucket": "amica-project-db1d5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1020000184296:android:f13e100fb496ab4842665d",
+        "android_client_info": {
+          "package_name": "com.lensateam.amica"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1020000184296-26ccnune7oilq9re7vfialnp0fs2pgv0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lensateam.amica",
+            "certificate_hash": "de025e9962686d65b996eb5c8b9021bc0b5e8dfc"
+          }
+        },
+        {
+          "client_id": "1020000184296-6eobihvcd5hgspun30p0drcdll5k26so.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKWQaKw4vy3Z3yXtinWyw-zPBJht6UkdY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1020000184296-6eobihvcd5hgspun30p0drcdll5k26so.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,8 +1,8 @@
 import 'package:amica/login/register_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../navigation/main_navigator.dart'; // <--- Wajib diimport
-import '../provider/auth_provider.dart'; // <--- Wajib diimport
+import '../navigation/main_navigator.dart';
+import '../provider/auth_provider.dart';
 import '../provider/theme_provider.dart';
 import '../theme/colors.dart';
 import 'forgot_password_flow_page.dart';
@@ -17,12 +17,13 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
-  final _emailController = TextEditingController();
+
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -34,35 +35,49 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _handleLogin() async {
-    final email = _emailController.text.trim();
+    final identifier = _identifierController.text.trim();
     final password = _passwordController.text;
-    if (email.isEmpty || password.isEmpty) {
-      _showErrorSnackbar('Email dan Password wajib diisi.');
-      return;
-    }
 
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-    if (!emailRegex.hasMatch(email)) {
-      _showErrorSnackbar('Format email tidak valid.');
+    if (identifier.isEmpty || password.isEmpty) {
+      _showErrorSnackbar('Username/Email dan Password wajib diisi.');
       return;
     }
 
     setState(() => _isLoading = true);
 
     final authProvider = context.read<AuthProvider>();
-
-    final errorMessage = await authProvider.attemptLogin(email, password);
+    final result = await authProvider.attemptLogin(identifier, password);
 
     if (mounted) {
       setState(() => _isLoading = false);
 
-      if (errorMessage != null) {
-        _showErrorSnackbar(errorMessage);
-      } else {
+      if (result['success'] == true) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainNavigator()),
           (Route<dynamic> route) => false,
         );
+      } else {
+        if (result['status'] == 'suspended') {
+          _showErrorSnackbar('Akun dibekukan: ${result['message']}');
+        } else if (result['status'] == 'pin_required') {
+          _showErrorSnackbar('Verifikasi PIN diperlukan (Fitur segera hadir)');
+        } else {
+          _showErrorSnackbar(result['message'] ?? 'Login gagal.');
+        }
+      }
+    }
+  }
+
+  void _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    final authProvider = context.read<AuthProvider>();
+    final result = await authProvider.loginWithGoogle();
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (result['success'] == true) {
+      } else {
+        _showErrorSnackbar(result['message'] ?? 'Gagal login Google');
       }
     }
   }
@@ -157,18 +172,20 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 40),
+
                     TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _identifierController,
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
+                        labelText: 'Username atau Email',
+                        prefixIcon: Icon(Icons.person_outline),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(16)),
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
+
                     TextField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
@@ -193,6 +210,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
+
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
@@ -209,6 +227,27 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 16),
+
+                    OutlinedButton(
+                      onPressed: _isLoading ? null : _handleGoogleLogin,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.g_mobiledata, size: 28),
+                          const SizedBox(width: 8),
+                          const Text("Masuk dengan Google"),
+                        ],
+                      ),
+                    ),
+
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
@@ -218,12 +257,13 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         );
                       },
-                      child: Text(
+                      child: const Text(
                         'Lupa password?',
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -246,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 50),
+                    const SizedBox(height: 50),
                   ],
                 ),
               ),

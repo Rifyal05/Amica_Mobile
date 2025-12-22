@@ -1,5 +1,7 @@
+import '../services/api_config.dart';
+
 class Article {
-  final String id;
+  final int id;
   final String category;
   final String title;
   final String content;
@@ -9,6 +11,8 @@ class Article {
   final String sourceName;
   final String sourceUrl;
   final bool isFeatured;
+  final String createdAt;
+  final String author;
 
   const Article({
     required this.id,
@@ -21,31 +25,51 @@ class Article {
     required this.sourceName,
     required this.sourceUrl,
     this.isFeatured = false,
+    required this.createdAt,
+    required this.author,
   });
 
-  static final List<Article> dummyArticles = [
-    const Article(
-      id: 'article_001',
-      category: 'CYBERBULLYING',
-      title: '5 Tanda Anak Anda Menjadi Korban Perundungan Siber',
-      readTime: 5,
-      imageUrl: 'https://images.pexels.com/photos/5699475/pexels-photo-5699475.jpeg?auto=compress&cs=tinysrgb&w=800',
-      isFeatured: true,
-      tags: ['cyberbullying', 'remaja', 'keamanan_digital'],
-      sourceName: 'SOURCE NAME',
-      sourceUrl: 'https://google.com',
-      content: 'Memahami tanda-tanda perundungan siber bisa menjadi tantangan. Berikut adalah tanda kunci yang perlu diwaspadai oleh setiap orang tua',
-    ),
-    const Article(
-      id: 'article_002',
-      category: 'POLA ASUH',
-      title: 'Membangun Komunikasi Terbuka dengan Anak Remaja Anda',
-      readTime: 4,
-      imageUrl: 'https://images.pexels.com/photos/7988086/pexels-photo-7988086.jpeg?auto=compress&cs=tinysrgb&w=800',
-      tags: ['komunikasi', 'pola_asuh', 'remaja'],
-      sourceName: 'source name',
-      sourceUrl: 'https://google.com',
-      content: 'Membangun komunikasi yang kuat adalah fondasi hubungan yang sehat dengan remaja. Alih-alih selalu mengoreksi, cobalah untuk lebih banyak terhubung. Dengarkan cerita mereka tanpa menghakimi, dan validasi perasaan mereka meskipun Anda tidak setuju dengan perilakunya.',
-    ),
-  ];
+  factory Article.fromJson(Map<String, dynamic> json) {
+    List<String> parsedTags = [];
+    if (json['tags'] != null) {
+      if (json['tags'] is List) {
+        parsedTags = List<String>.from(json['tags']);
+      } else if (json['tags'] is String) {
+        parsedTags = (json['tags'] as String)
+            .split(',')
+            .map((e) => e.trim())
+            .toList();
+      }
+    }
+
+    String rawImg = json['image_url'] ?? '';
+    String finalImgUrl;
+
+    if (rawImg.startsWith('http')) {
+      finalImgUrl = rawImg;
+    } else if (rawImg.isNotEmpty) {
+      finalImgUrl = "${ApiConfig.baseUrl}/static/uploads/articles/$rawImg";
+    } else {
+      finalImgUrl = 'https://via.placeholder.com/400x200?text=No+Image';
+    }
+
+    int estimatedReadTime =
+        json['read_time'] ??
+        ((json['content']?.toString().split(' ').length ?? 0) / 200).ceil();
+
+    return Article(
+      id: json['id'] ?? 0,
+      category: json['category'] ?? 'Umum',
+      title: json['title'] ?? 'Tanpa Judul',
+      content: json['content'] ?? '',
+      imageUrl: finalImgUrl,
+      readTime: estimatedReadTime < 1 ? 1 : estimatedReadTime,
+      tags: parsedTags,
+      sourceName: json['source_name'] ?? 'Amica Redaksi',
+      sourceUrl: json['source_url'] ?? '',
+      isFeatured: json['is_featured'] == true,
+      createdAt: json['created_at'] ?? '',
+      author: json['author'] ?? 'Admin',
+    );
+  }
 }

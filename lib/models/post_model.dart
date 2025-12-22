@@ -1,51 +1,80 @@
-import 'package:amica/models/user_model.dart';
+import '../services/api_config.dart';
+import 'user_model.dart';
 
 class Post {
   final String id;
-  final User user;
+  final User author;
   final String caption;
   final String? imageUrl;
-  final String? assetPath;
   final DateTime timestamp;
-  final int likes;
-  final int comments;
+  final int likesCount;
+  final int commentsCount;
   final List<String> tags;
+  final bool isLiked;
+  final bool isSaved;
 
-  const Post({
+  Post({
     required this.id,
-    required this.user,
+    required this.author,
     required this.caption,
     this.imageUrl,
-    this.assetPath,
     required this.timestamp,
-    required this.likes,
-    required this.comments,
-    this.tags = const [],
+    required this.likesCount,
+    required this.commentsCount,
+    required this.tags,
+    required this.isLiked,
+    this.isSaved = false,
   });
 
-  static final List<Post> dummyPosts = List.generate(12, (index) {
-    final user = User.dummyUsers[index % User.dummyUsers.length];
-    final List<String> dummyTags = [
-      'parenting', 'pengen_tanya', 'tips_anak', 'cerita_lucu', 'keluarga'
-    ];
+  String? get fullImageUrl {
+    return ApiConfig.getFullUrl(imageUrl);
+  }
 
-    bool hasImage = index % 3 != 0;
-    bool isLocal = index % 2 != 0 && hasImage;
+  factory Post.fromJson(Map<String, dynamic> json) {
+    List<String> parsedTags = [];
+    if (json['tags'] != null) {
+      parsedTags = List<String>.from(json['tags']);
+    }
 
     return Post(
-      id: 'post_$index',
-      user: user,
-      timestamp: DateTime.now().subtract(Duration(hours: index * 2)),
-      caption: hasImage
-          ? 'Anakku belakangan ini lebih sering menyendiri setelah pulang sekolah, ada saran?'
-          : 'Hanya ingin berbagi sedikit pemikiran hari ini. Terkadang, menjadi orang tua adalah tentang belajar melepaskan. Belajar percaya bahwa kita sudah memberikan bekal yang cukup bagi mereka untuk terbang sendiri. Sulit, tapi juga indah.',
-      imageUrl: hasImage && !isLocal
-          ? 'https://picsum.photos/seed/${index * 5}/800/${index % 2 == 0 ? 600 : 1200}'
-          : null,
-      assetPath: isLocal ? 'source/images/test.jpg' : null,
-      likes: 1200 - (index * 35),
-      comments: 312 - (index * 10),
-      tags: [dummyTags[index % dummyTags.length], dummyTags[(index + 1) % dummyTags.length]],
+      id: json['id'] ?? '',
+      author: User.fromJson(json['author'] ?? {}),
+      caption: json['caption'] ?? '',
+      imageUrl: json['image_url'],
+      timestamp: json['created_at'] != null
+          ? DateTime.parse(json['created_at']).toLocal()
+          : DateTime.now(),
+      likesCount: json['likes_count'] ?? 0,
+      commentsCount: json['comments_count'] ?? 0,
+      tags: parsedTags,
+      isLiked: json['is_liked'] ?? false,
+      isSaved: json['is_saved'] ?? false,
     );
-  });
+  }
+
+  Post copyWith({
+    String? id,
+    User? author,
+    String? caption,
+    String? imageUrl,
+    DateTime? timestamp,
+    int? likesCount,
+    int? commentsCount,
+    List<String>? tags,
+    bool? isLiked,
+    bool? isSaved,
+  }) {
+    return Post(
+      id: id ?? this.id,
+      author: author ?? this.author,
+      caption: caption ?? this.caption,
+      imageUrl: imageUrl ?? this.imageUrl,
+      timestamp: timestamp ?? this.timestamp,
+      likesCount: likesCount ?? this.likesCount,
+      commentsCount: commentsCount ?? this.commentsCount,
+      tags: tags ?? this.tags,
+      isLiked: isLiked ?? this.isLiked,
+      isSaved: isSaved ?? this.isSaved,
+    );
+  }
 }

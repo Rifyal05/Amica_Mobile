@@ -3,13 +3,13 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-//    id("com.google.gms.google-services")
+    id("com.google.gms.google-services")
     id("org.jetbrains.kotlin.android")
 }
 
 android {
     namespace = "com.lensateam.amica"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = flutter.compileSdkVersion  // 36
     ndkVersion = "28.2.13676358"
 
     tasks.withType<JavaCompile>().configureEach {
@@ -29,8 +29,8 @@ android {
 
     defaultConfig {
         applicationId = "com.lensateam.amica"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = flutter.minSdkVersion //flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion // 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
@@ -38,8 +38,6 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

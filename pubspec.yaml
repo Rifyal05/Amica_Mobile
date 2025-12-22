@@ -21,6 +21,16 @@ dependencies:
   webview_flutter:
   image_picker:
   http:
+  readmore:
+  scrollable_positioned_list:
+  cached_network_image:
+  firebase_auth:
+  firebase_core:
+  flutter_secure_storage:
+  google_sign_in:
+  flutter_dotenv:
+  onesignal_flutter:
+  socket_io_client:
 
 dev_dependencies:
   flutter_test:
@@ -37,6 +47,7 @@ flutter:
   assets:
     - source/images/
     - source/
+    - .env
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a

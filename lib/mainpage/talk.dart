@@ -1,8 +1,12 @@
-import 'package:amica/mainpage/connections_page.dart';
-import 'package:amica/mainpage/webview_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'chat_page.dart';
+import 'connections_page.dart';
+import 'webview_page.dart';
+import '../provider/chat_provider.dart';
+import '../provider/auth_provider.dart';
 
 class Talk extends StatefulWidget {
   const Talk({super.key});
@@ -12,87 +16,107 @@ class Talk extends StatefulWidget {
 }
 
 class _TalkState extends State<Talk> {
-  Future<void> _launchURL(String url) async {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final chatProv = Provider.of<ChatProvider>(context, listen: false);
+
+      if (auth.isLoggedIn) {
+        String? validToken = await auth.getFreshToken();
+        String myUserId = auth.currentUser?.id ?? "";
+
+        if (validToken != null && myUserId.isNotEmpty) {
+          chatProv.connectSocket(validToken, myUserId);
+
+          chatProv.fetchInbox();
+        }
+      }
+    });
+  }
+
+  String _formatTime(DateTime? time) {
+    if (time == null) return "";
+    final now = DateTime.now();
+    if (time.day == now.day &&
+        time.month == now.month &&
+        time.year == now.year) {
+      return DateFormat('HH:mm').format(time.toLocal());
+    }
+    return DateFormat('dd/MM').format(time.toLocal());
+  }
+
+  Future<void> _launchWhatsApp(String phone, String message) async {
+    final String url =
+        "https://wa.me/$phone/?text=${Uri.encodeComponent(message)}";
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       debugPrint('Could not launch $url');
     }
   }
 
-  Future<void> _launchWhatsApp(String phone, String message) async {
-    final String url =
-        "https://wa.me/$phone/?text=${Uri.encodeComponent(message)}";
-    await _launchURL(url);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final chatProvider = context.watch<ChatProvider>();
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           "Dukungan",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-            color: colorScheme.onSurface,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
       ),
       body: Stack(
         children: [
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: _buildCollapsibleSupportSection(context),
-              ),
-              SliverToBoxAdapter(child: _buildSearchBar(context)),
-              SliverList(
-                delegate: SliverChildListDelegate([
-                  _buildChatListItem(
-                    context: context,
-                    name: 'Dr. Anisa, Sp.A',
-                    message: 'Sama-sama, semoga membantu ya!',
-                    time: '10:05',
-                    unreadCount: 1,
-                    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrHHSURcy1oXxHIo0Kp4TBOAI_I-X0PDCnGg&s',
+          RefreshIndicator(
+            onRefresh: () => chatProvider.fetchInbox(),
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _buildCollapsibleSupportSection(context),
+                ),
+                SliverToBoxAdapter(child: _buildSearchBar(context)),
+
+                if (chatProvider.isLoading && chatProvider.inbox.isEmpty)
+                  const SliverFillRemaining(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (chatProvider.inbox.isEmpty)
+                  const SliverFillRemaining(
+                    child: Center(child: Text("Belum ada pesan.")),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final chat = chatProvider.inbox[index];
+                      return _buildChatListItem(
+                        context: context,
+                        chatId: chat.id,
+                        name: chat.name,
+                        message: chat.lastMessage ?? "Mulai percakapan...",
+                        time: _formatTime(chat.lastMessageTime),
+                        unreadCount: chat.unreadCount,
+                        imageUrl: chat.imageUrl,
+                      );
+                    }, childCount: chatProvider.inbox.length),
                   ),
-                  _buildChatListItem(
-                    context: context,
-                    name: 'Ayah Keren',
-                    message: 'Tentu, aku akan ada di sana!',
-                    time: 'Kemarin',
-                    unreadCount: 0,
-                    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSyxOpdtQyPGs-1BHnZk1mVtkDIzGpx4CDovg&s',
-                  ),
-                  _buildChatListItem(
-                    context: context,
-                    name: 'Tim Dukungan Amica',
-                    message: 'Selamat datang di Amica!',
-                    time: '2 hari lalu',
-                    unreadCount: 0,
-                    imageUrl: 'https://cdn.royalcanin-weshare-online.io/cldSdZEBBKJuub5qnTNm/v3/small-kitten-walking-with-white-paws-4-3',
-                  ),
-                  const SizedBox(height: 80),
-                ]),
-              ),
-            ],
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              ],
+            ),
           ),
           Positioned(
             bottom: 16.0,
             right: 16.0,
             child: FloatingActionButton(
               heroTag: 'talk_tab',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const ConnectionsPage(),
-                  ),
-                );
-              },
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ConnectionsPage(),
+                ),
+              ),
               backgroundColor: colorScheme.primary,
               child: Icon(
                 Icons.people_alt_outlined,
@@ -101,6 +125,100 @@ class _TalkState extends State<Talk> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatListItem({
+    required BuildContext context,
+    required String chatId,
+    required String name,
+    required String message,
+    required String time,
+    required int unreadCount,
+    required String imageUrl,
+  }) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 20.0,
+        vertical: 5.0,
+      ),
+      leading: CircleAvatar(
+        radius: 28,
+        backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+        child: imageUrl.isEmpty ? const Icon(Icons.person) : null,
+      ),
+      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(message, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(time, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 4),
+          if (unreadCount > 0)
+            CircleAvatar(
+              radius: 10,
+              backgroundColor: theme.colorScheme.primary,
+              child: Text(
+                unreadCount.toString(),
+                style: TextStyle(
+                  color: theme.colorScheme.onPrimary,
+                  fontSize: 10,
+                ),
+              ),
+            )
+          else
+            const SizedBox(height: 20),
+        ],
+      ),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>
+                ChatPage(chatId: chatId, chatName: name, chatImage: imageUrl),
+          ),
+        );
+      },
+      onLongPress: () {
+        showModalBottomSheet(
+          context: context,
+          builder: (ctx) => Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text(
+                  "Hapus Percakapan",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: TextField(
+        decoration: InputDecoration(
+          hintText: 'Cari pesan atau teman...',
+          prefixIcon: Icon(Icons.search, color: colorScheme.onSurfaceVariant),
+          filled: true,
+          fillColor: colorScheme.surfaceContainerHighest,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+        ),
       ),
     );
   }
@@ -125,7 +243,6 @@ class _TalkState extends State<Talk> {
         collapsedShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        childrenPadding: const EdgeInsets.only(bottom: 8),
         children: [
           _buildSupportTile(
             context,
@@ -170,27 +287,6 @@ class _TalkState extends State<Talk> {
     );
   }
 
-  Widget _buildSearchBar(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Cari pesan atau teman...',
-          prefixIcon: Icon(Icons.search, color: colorScheme.onSurfaceVariant),
-          filled: true,
-          fillColor: colorScheme.surfaceContainerHighest,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSupportTile(
     BuildContext context, {
     required IconData icon,
@@ -205,60 +301,6 @@ class _TalkState extends State<Talk> {
       trailing: const Icon(Icons.launch, size: 20),
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    );
-  }
-
-  Widget _buildChatListItem({
-    required BuildContext context,
-    required String name,
-    required String message,
-    required String time,
-    required int unreadCount,
-    required String imageUrl,
-  }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final bool hasUnread = unreadCount > 0;
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 20.0,
-        vertical: 10.0,
-      ),
-      leading: CircleAvatar(
-        radius: 30,
-        backgroundImage: NetworkImage(imageUrl),
-      ),
-      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(message, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(time, style: theme.textTheme.bodySmall),
-          const SizedBox(height: 6),
-          if (hasUnread)
-            CircleAvatar(
-              radius: 12,
-              backgroundColor: colorScheme.primary,
-              child: Text(
-                unreadCount.toString(),
-                style: TextStyle(
-                  color: colorScheme.onPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
-          else
-            const SizedBox(height: 24),
-        ],
-      ),
-      onTap: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (context) => const ChatPage()));
-      },
     );
   }
 }

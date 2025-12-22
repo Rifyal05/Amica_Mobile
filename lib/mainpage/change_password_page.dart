@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/user_service.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -8,61 +9,103 @@ class ChangePasswordPage extends StatefulWidget {
 }
 
 class _ChangePasswordPageState extends State<ChangePasswordPage> {
-  final _currentPasswordController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _oldPassController = TextEditingController();
+  final _newPassController = TextEditingController();
+  final _confirmPassController = TextEditingController();
 
-  void _savePassword() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password berhasil diperbarui!')),
-    );
-    Navigator.of(context).pop();
+  final UserService _userService = UserService();
+  bool _isLoading = false;
+
+  void _save() async {
+    final oldPass = _oldPassController.text;
+    final newPass = _newPassController.text;
+    final confirmPass = _confirmPassController.text;
+
+    if (oldPass.isEmpty || newPass.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Semua kolom harus diisi")));
+      return;
+    }
+
+    if (newPass.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Password minimal 6 karakter")),
+      );
+      return;
+    }
+
+    if (newPass != confirmPass) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Konfirmasi password tidak cocok")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final error = await _userService.changePassword(oldPass, newPass);
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    if (error == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password berhasil diubah"),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context); // Kembali ke Settings
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ganti Password'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+      appBar: AppBar(title: const Text("Ganti Password")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
-              controller: _currentPasswordController,
+              controller: _oldPassController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Password Saat Ini',
+                labelText: "Password Lama",
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _newPasswordController,
+              controller: _newPassController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Password Baru',
+                labelText: "Password Baru",
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _confirmPasswordController,
+              controller: _confirmPassController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Konfirmasi Password Baru',
+                labelText: "Konfirmasi Password Baru",
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _savePassword,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _save,
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text("Simpan"),
               ),
-              child: const Text('Simpan Password Baru'),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../navigation/main_navigator.dart';
+import 'package:provider/provider.dart';
+import '../provider/auth_provider.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -13,6 +14,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
+  final _usernameController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -20,6 +22,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -33,44 +36,21 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  /*
-  =============================================================================
-  ANALISIS WHITE-BOX TESTING: FUNGSI _handleRegister
-  -----------------------------------------------------------------------------
-  Teknik: Branch Coverage
-  Tujuan: Memastikan setiap jalur validasi dan alur logika dalam fungsi _handleRegister
-          dieksekusi setidaknya satu kali selama pengujian.
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
 
-  Fungsi ini memiliki 6 cabang keputusan utama:
-  1. [Branch 1]: Pengecekan field kosong (nama, email, password).
-  2. [Branch 2]: Pengecekan format email menggunakan regular expression.
-  3. [Branch 3]: Pengecekan panjang minimum password.
-  4. [Branch 4]: Pengecekan kesamaan antara password dan konfirmasi password.
-  5. [Branch 5]: Jalur sukses, di mana semua validasi lolos dan proses registrasi
-                 (async) dimulai.
-  6. [Branch 6]: Pengecekan 'if (mounted)' setelah proses async, untuk navigasi yang aman.
-
-  Kasus Uji untuk Mencapai 100% Branch Coverage:
-  1. Input: Biarkan field 'Nama Lengkap' kosong, lalu tekan "Daftar".
-     -> Hasil: Mengeksekusi Branch 1. Menampilkan snackbar "Semua field wajib diisi.".
-  2. Input: Isi semua field, tetapi gunakan email "test.com" (tidak valid).
-     -> Hasil: Mengeksekusi Branch 2. Menampilkan snackbar "Format email tidak valid.".
-  3. Input: Isi semua field dengan benar, tetapi password diisi "pass123" (kurang dari 8).
-     -> Hasil: Mengeksekusi Branch 3. Menampilkan snackbar "Password minimal harus 8 karakter.".
-  4. Input: Isi semua field, password="Password1234", konfirmasi="PasswordBeda".
-     -> Hasil: Mengeksekusi Branch 4. Menampilkan snackbar "Konfirmasi password tidak cocok.".
-  5. Input: Isi semua field dengan data yang valid.
-     -> Hasil: Mengeksekusi Branch 5 dan 6. Menampilkan loading, lalu navigasi ke MainNavigator.
-  =============================================================================
-  */
   void _handleRegister() async {
+    final username = _usernameController.text.trim();
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    // [Branch 1]: Pengecekan field kosong
-    if (name.isEmpty ||
+    if (username.isEmpty ||
+        name.isEmpty ||
         email.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
@@ -78,35 +58,65 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    // [Branch 2]: Validasi format email
+    if (username.contains(' ')) {
+      _showErrorSnackbar('Username tidak boleh mengandung spasi.');
+      return;
+    }
+
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(email)) {
       _showErrorSnackbar('Format email tidak valid.');
       return;
     }
 
-    // [Branch 3]: Validasi panjang password
     if (password.length < 8) {
       _showErrorSnackbar('Password minimal harus 8 karakter.');
       return;
     }
 
-    // [Branch 4]: Validasi konfirmasi password
     if (password != confirmPassword) {
       _showErrorSnackbar('Konfirmasi password tidak cocok.');
       return;
     }
 
-    // [Branch 5]: Semua validasi lolos, lanjutkan proses
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
 
-    // [Branch 6]: Pengecekan 'mounted' untuk navigasi aman
+    final authProvider = context.read<AuthProvider>();
+    final errorMessage = await authProvider.register(
+      username,
+      name,
+      email,
+      password,
+    );
+
     if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const MainNavigator()),
-        (route) => false,
-      );
+      setState(() => _isLoading = false);
+
+      if (errorMessage == null) {
+        _showSuccessSnackbar('Registrasi berhasil! Silakan login.');
+        Navigator.pop(context);
+      } else {
+        _showErrorSnackbar(errorMessage);
+      }
+    }
+  }
+
+  void _handleGoogleRegister() async {
+    setState(() => _isLoading = true);
+    final authProvider = context.read<AuthProvider>();
+
+    final result = await authProvider.loginWithGoogle();
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (result['success'] == true) {
+        // Navigator.of(context).pushAndRemoveUntil(
+        //   MaterialPageRoute(builder: (context) => const MainNavigator()),
+        //       (Route<dynamic> route) => false,
+        // );
+      } else {
+        _showErrorSnackbar(result['message'] ?? 'Gagal daftar dengan Google');
+      }
     }
   }
 
@@ -130,27 +140,32 @@ class _RegisterPageState extends State<RegisterPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      "Satu Langkah Lagi",
+                      "Bergabunglah Bersama Kami",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Isi data di bawah ini untuk bergabung dengan komunitas kami.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 30),
+
+                    TextField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Username (ID Unik)',
+                        hintText: 'Tanpa spasi, contoh: amica123',
+                        prefixIcon: Icon(Icons.alternate_email),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(16)),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 16),
+
                     TextField(
                       controller: _nameController,
                       decoration: const InputDecoration(
-                        labelText: 'Nama Lengkap',
+                        labelText: 'Nama Lengkap (Display)',
                         prefixIcon: Icon(Icons.person_outline),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(16)),
@@ -219,6 +234,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
+
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleRegister,
                       style: ElevatedButton.styleFrom(
@@ -228,13 +244,34 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ),
                       child: const Text(
-                        "Daftar",
+                        "Daftar Manual",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 16),
+
+                    OutlinedButton(
+                      onPressed: _isLoading ? null : _handleGoogleRegister,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.g_mobiledata, size: 28),
+                          const SizedBox(width: 8),
+                          const Text("Daftar dengan Google"),
+                        ],
+                      ),
+                    ),
+
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -254,6 +291,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),

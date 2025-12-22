@@ -1,13 +1,11 @@
-import 'package:amica/mainpage/comments_page.dart';
-import 'package:amica/mainpage/create_post_page.dart';
-import 'package:amica/mainpage/discover_page.dart';
-import 'package:amica/mainpage/notifications_page.dart';
-import 'package:amica/mainpage/user_profile_page.dart';
-import 'package:amica/provider/navigation_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
-import '../models/post_model.dart';
-import 'widgets/adaptive_image_card.dart';
+import '../provider/post_provider.dart';
+import 'widgets/post_card.dart';
+import 'create_post_page.dart';
+import 'notifications_page.dart';
+import 'discover_page.dart';
 
 class Connect extends StatefulWidget {
   const Connect({super.key});
@@ -16,310 +14,182 @@ class Connect extends StatefulWidget {
   State<Connect> createState() => _ConnectState();
 }
 
-class _ConnectState extends State<Connect> {
+class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
   int _selectedFilterIndex = 0;
   final List<String> _filters = ['Terbaru', 'Mengikuti', 'Temukan'];
-  final List<Post> _posts = Post.dummyPosts;
+  late ScrollController _scrollController;
+  bool _isNavVisible = true;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          "Amica",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-        shape: Border(
-          bottom: BorderSide(
-            color: colorScheme.outline
-                .withAlpha((255 * 0.2).round()),
-            width: 1,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const NotificationsPage(),
-              ));
-            },
-            icon: Icon(Icons.notifications_none_outlined, color: colorScheme.onSurface, size: 26),
-          ),
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const CreatePostPage(),
-                fullscreenDialog: true,
-              ));
-            },
-            icon: Icon(Icons.add_circle_outline, color: colorScheme.onSurface, size: 26),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Stack(
-        children: [
-          ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-            itemCount: _posts.length,
-            itemBuilder: (context, index) {
-              return PostCard(post: _posts[index]);
-            },
-          ),
-          Positioned(
-            bottom: 16,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest
-                      .withAlpha((255 * 0.95).round()),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((255 * 0.1).round()),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8.0,
-                  children: List.generate(_filters.length, (index) {
-                    bool isSelected = _selectedFilterIndex == index;
-                    return ChoiceChip(
-                      label: Text(_filters[index]),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        if (selected) {
-                          if (index == 2) {
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => const DiscoverPage(),
-                            ));
-                          } else {
-                            setState(() {
-                              _selectedFilterIndex = index;
-                            });
-                          }
-                        }
-                      },
-                      backgroundColor: Colors.transparent,
-                      selectedColor: colorScheme.primary,
-                      labelStyle: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isSelected && index != 2
-                            ? colorScheme.onPrimary
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                      shape: const StadiumBorder(),
-                      side: BorderSide.none,
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PostCard extends StatefulWidget {
-  final Post post;
-  const PostCard({super.key, required this.post});
-
-  @override
-  State<PostCard> createState() => _PostCardState();
-}
-
-class _PostCardState extends State<PostCard> {
-  bool _isLiked = false;
-  bool _isSaved = false;
-  final String currentUserId = 'user_001';
-
-  void _showPostMenu() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Wrap(
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.person_add_alt_1_outlined),
-              title: const Text('Ikuti Pengguna'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Anda mulai mengikuti ${widget.post.user.displayName}.')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.flag_outlined),
-              title: const Text('Laporkan Postingan'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Postingan berhasil dilaporkan. Terima kasih atas bantuan Anda.')),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<PostProvider>();
+      if (provider.posts.isEmpty) {
+        provider.fetchPosts();
+      }
+    });
   }
 
-  void _navigateToProfile() {
-    if (widget.post.user.id == currentUserId) {
-      context.read<NavigationProvider>().setIndex(3);
-    } else {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (context) => UserProfilePage(user: widget.post.user),
-      ));
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      context.read<PostProvider>().fetchPosts();
+    }
+
+    if (_scrollController.position.userScrollDirection ==
+        ScrollDirection.reverse) {
+      if (_isNavVisible) setState(() => _isNavVisible = false);
+    } else if (_scrollController.position.userScrollDirection ==
+        ScrollDirection.forward) {
+      if (!_isNavVisible) setState(() => _isNavVisible = true);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final hasImage = widget.post.imageUrl != null || widget.post.assetPath != null;
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
 
-    return Card(
-      elevation: 0,
-      color: colorScheme.surface,
-      margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
+  Future<void> _onRefresh() async {
+    await context.read<PostProvider>().refreshPosts();
+  }
+
+  void _onFilterChanged(int index) {
+    if (index == 2) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const DiscoverPage()));
+      return;
+    }
+
+    setState(() => _selectedFilterIndex = index);
+
+    final provider = context.read<PostProvider>();
+
+    if (index == 1) {
+      provider.setFilter('following');
+    } else {
+      provider.setFilter('latest');
+    }
+
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  void _openCreatePost() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const CreatePostPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(-1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  void _showModerationDialog(Map<String, dynamic> errorData) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: Colors.orange,
+          size: 48,
+        ),
+        title: const Text("Postingan Ditolak"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                InkWell(
-                  onTap: _navigateToProfile,
-                  child: CircleAvatar(
-                    radius: 22,
-                    backgroundImage: NetworkImage(widget.post.user.avatarUrl),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    onTap: _navigateToProfile,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.post.user.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${widget.post.timestamp.hour} jam lalu',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (widget.post.user.id != currentUserId)
-                  IconButton(
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: _showPostMenu,
-                  )
-              ],
-            ),
+            Text(errorData['message'] ?? "Konten melanggar aturan."),
             const SizedBox(height: 12),
-            Text(
-              widget.post.caption,
-              style: TextStyle(
-                fontSize: hasImage ? 15 : 18,
-                height: 1.4,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Text(
+                "Alasan: ${errorData['reason']}",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
-            if (widget.post.tags.isNotEmpty) const SizedBox(height: 12),
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 4.0,
-              children: widget.post.tags.map((tag) {
-                return Chip(
-                  label: Text('#$tag'),
-                  padding: EdgeInsets.zero,
-                  labelStyle: TextStyle(fontSize: 12, color: colorScheme.primary),
-                  backgroundColor: colorScheme.primary.withAlpha((255 * 0.1).round()),
-                  side: BorderSide.none,
-                );
-              }).toList(),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Mengerti"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _friendlyErrorMessage(String error) {
+    if (error.contains("SocketException") ||
+        error.contains("Connection refused")) {
+      return "Gagal terhubung ke server.\nPastikan internet anda menyala.";
+    } else if (error.contains("Timeout")) {
+      return "Koneksi lambat, coba lagi ya.";
+    }
+    return "Terjadi kesalahan: $error";
+  }
+
+  Widget _buildErrorWidget(String error, ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 64,
+              color: colorScheme.error.withOpacity(0.5),
             ),
-            if (hasImage) ...[
-              const SizedBox(height: 12),
-              if (widget.post.assetPath != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12.0),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 500),
-                    child: Image.asset(
-                      widget.post.assetPath!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
-                  ),
-                )
-              else
-                AdaptiveImageCard(
-                  imageUrl: widget.post.imageUrl!,
-                ),
-            ],
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                _buildInteractiveIcon(
-                  icon: _isLiked ? Icons.favorite : Icons.favorite_border,
-                  label: '${widget.post.likes}',
-                  color: _isLiked ? Colors.redAccent : colorScheme.onSurfaceVariant,
-                  onPressed: () => setState(() => _isLiked = !_isLiked),
-                ),
-                const SizedBox(width: 16),
-                _buildInteractiveIcon(
-                  icon: Icons.chat_bubble_outline,
-                  label: '${widget.post.comments}',
-                  color: colorScheme.onSurfaceVariant,
-                  onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => const CommentsPage(),
-                    ));
-                  },
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => setState(() => _isSaved = !_isSaved),
-                  icon: Icon(
-                    _isSaved ? Icons.bookmark : Icons.bookmark_border,
-                    color: _isSaved ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                  ),
-                  iconSize: 28,
-                ),
-              ],
+            const SizedBox(height: 16),
+            Text(
+              "Ups, ada masalah!",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _friendlyErrorMessage(error),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.tonalIcon(
+              onPressed: _onRefresh,
+              icon: const Icon(Icons.refresh),
+              label: const Text("Coba Lagi"),
             ),
           ],
         ),
@@ -327,26 +197,202 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  Widget _buildInteractiveIcon({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        child: Row(
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final postProvider = context.watch<PostProvider>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (postProvider.moderationError != null) {
+        _showModerationDialog(postProvider.moderationError!);
+        postProvider.clearModerationError();
+      }
+    });
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity! > 300) {
+            _openCreatePost();
+          }
+        },
+        child: Stack(
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
+            RefreshIndicator(
+              onRefresh: _onRefresh,
+              edgeOffset: 100,
+              color: colorScheme.primary,
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  SliverAppBar(
+                    floating: true,
+                    snap: true,
+                    pinned: false,
+                    backgroundColor: colorScheme.surface.withOpacity(0.95),
+                    elevation: 0,
+                    centerTitle: false,
+                    title: Text(
+                      "Amica",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    actions: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsPage(),
+                          ),
+                        ),
+                        icon: Icon(
+                          Icons.notifications_none_outlined,
+                          color: colorScheme.onSurface,
+                          size: 26,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _openCreatePost,
+                        icon: Icon(
+                          Icons.add_circle_outline,
+                          color: colorScheme.onSurface,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    bottom: PreferredSize(
+                      preferredSize: const Size.fromHeight(1),
+                      child: Container(
+                        height: 1,
+                        color: colorScheme.outline.withOpacity(0.1),
+                      ),
+                    ),
+                  ),
+
+                  if (postProvider.isUploading)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Column(
+                          children: [
+                            const LinearProgressIndicator(),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Mengirim postingan...",
+                              style: TextStyle(
+                                color: colorScheme.primary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  if (postProvider.posts.isEmpty && postProvider.isLoading)
+                    const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (postProvider.errorMessage != null &&
+                      postProvider.posts.isEmpty)
+                    SliverFillRemaining(
+                      child: _buildErrorWidget(
+                        postProvider.errorMessage!,
+                        colorScheme,
+                      ),
+                    )
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index == postProvider.posts.length) {
+                            return postProvider.hasMore
+                                ? const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                : const SizedBox(height: 80);
+                          }
+                          final post = postProvider.posts[index];
+                          return PostCard(key: ValueKey(post.id), post: post);
+                        },
+                        childCount:
+                            postProvider.posts.length +
+                            (postProvider.hasMore ? 1 : 0),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              bottom: _isNavVisible ? 16 : -80,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withOpacity(
+                      0.95,
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(_filters.length, (index) {
+                      bool isSelected = _selectedFilterIndex == index;
+                      return GestureDetector(
+                        onTap: () => _onFilterChanged(index),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? colorScheme.primary
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Text(
+                            _filters[index],
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: isSelected
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
               ),
             ),
           ],

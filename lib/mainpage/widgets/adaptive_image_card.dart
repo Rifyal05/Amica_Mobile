@@ -60,12 +60,13 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
       );
     }
 
-    final screenWidth = MediaQuery.of(context).size.width - 48;
+    final screenWidth = MediaQuery.of(context).size.width - 32;
     final displayHeight = screenWidth / _aspectRatio!;
+    final borderRadius = BorderRadius.circular(12.0);
 
     if (displayHeight <= maxImageHeight) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: borderRadius,
         child: AspectRatio(
           aspectRatio: _aspectRatio!,
           child: Container(
@@ -78,7 +79,7 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
       );
     } else {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: borderRadius,
         child: SizedBox(
           height: maxImageHeight,
           width: double.infinity,
