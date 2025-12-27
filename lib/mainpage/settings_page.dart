@@ -2,6 +2,7 @@ import 'package:amica/login/login_page.dart';
 import 'package:amica/mainpage/change_email_page.dart';
 import 'package:amica/mainpage/change_password_page.dart';
 import 'package:amica/mainpage/feedback_page.dart';
+import 'package:amica/mainpage/blocked_user_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,7 +10,6 @@ import '../provider/chat_provider.dart';
 import '../provider/font_provider.dart';
 import '../provider/theme_provider.dart';
 import '../provider/auth_provider.dart';
-import 'package:amica/mainpage/blocked_user_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -36,9 +36,7 @@ class _SettingsPageState extends State<SettingsPage> {
           actions: [
             TextButton(
               child: const Text('Batal'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             TextButton(
               child: const Text(
@@ -47,10 +45,8 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
-
                 context.read<ChatProvider>().clearData();
                 await context.read<AuthProvider>().performLogout();
-
                 if (mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -65,11 +61,97 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  void _handlePinToggle(bool currentValue) {
+    if (currentValue) {
+      _showDisablePinDialog();
+    } else {
+      _showEnablePinDialog();
+    }
+  }
+
+  void _showEnablePinDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Buat PIN Baru'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Masukkan 6 digit PIN'),
+          keyboardType: TextInputType.number,
+          obscureText: true,
+          maxLength: 6,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (controller.text.length < 4) return;
+              Navigator.pop(context);
+              final err = await context.read<AuthProvider>().setPin(
+                controller.text,
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(err ?? 'PIN Berhasil diaktifkan')),
+                );
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDisablePinDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nonaktifkan PIN'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Masukkan PIN saat ini'),
+          keyboardType: TextInputType.number,
+          obscureText: true,
+          maxLength: 6,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final err = await context.read<AuthProvider>().removePin(
+                controller.text,
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(err ?? 'PIN Berhasil dihapus')),
+                );
+              }
+            },
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fontProvider = context.watch<FontProvider>();
     final themeProvider = context.watch<ThemeProvider>();
+    final authProvider = context.watch<AuthProvider>();
+
     final isDarkMode = themeProvider.isDarkMode(context);
+    final hasPin = authProvider.currentUser?.hasPin ?? false;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pengaturan')),
@@ -79,35 +161,34 @@ class _SettingsPageState extends State<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.email_outlined),
             title: const Text('Ganti Email'),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const ChangeEmailPage(),
-                ),
-              );
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const ChangeEmailPage()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.lock_outline),
             title: const Text('Ganti Password'),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const ChangePasswordPage(),
-                ),
-              );
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const ChangePasswordPage(),
+              ),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.block),
             title: const Text('Daftar Pengguna Diblokir'),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const BlockedUsersPage(),
-                ),
-              );
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const BlockedUsersPage()),
+            ),
+          ),
+          const Divider(),
+          _buildSectionHeader('Keamanan'),
+          SwitchListTile(
+            secondary: const Icon(Icons.security),
+            title: const Text('PIN Keamanan'),
+            subtitle: Text(hasPin ? 'PIN Aktif' : 'PIN Tidak Aktif'),
+            value: hasPin,
+            onChanged: (_) => _handlePinToggle(hasPin),
           ),
           const Divider(),
           _buildSectionHeader('Tampilan'),
@@ -115,9 +196,7 @@ class _SettingsPageState extends State<SettingsPage> {
             secondary: const Icon(Icons.brightness_6_outlined),
             title: const Text('Mode Gelap'),
             value: isDarkMode,
-            onChanged: (value) {
-              context.read<ThemeProvider>().toggleTheme();
-            },
+            onChanged: (value) => context.read<ThemeProvider>().toggleTheme(),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -135,9 +214,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   divisions: 7,
                   label:
                       '${(fontProvider.fontScale * 100).toStringAsFixed(0)}%',
-                  onChanged: (double value) {
-                    context.read<FontProvider>().setFontScale(value);
-                  },
+                  onChanged: (double value) =>
+                      context.read<FontProvider>().setFontScale(value),
                 ),
               ],
             ),
@@ -147,11 +225,9 @@ class _SettingsPageState extends State<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.feedback_outlined),
             title: const Text('Beri Masukan'),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const FeedbackPage()),
-              );
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const FeedbackPage()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),

@@ -10,13 +10,21 @@ import '../services/api_config.dart';
 
 class AuthService {
   final String baseUrl = '${ApiConfig.baseUrl}/api/auth';
-  final firebase_auth.FirebaseAuth _firebaseAuth = firebase_auth.FirebaseAuth.instance;
+  final firebase_auth.FirebaseAuth _firebaseAuth =
+      firebase_auth.FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
-  static final StreamController<void> _sessionExpiredController = StreamController<void>.broadcast();
-  static Stream<void> get sessionExpiredStream => _sessionExpiredController.stream;
+  static final StreamController<void> _sessionExpiredController =
+      StreamController<void>.broadcast();
+  static Stream<void> get sessionExpiredStream =>
+      _sessionExpiredController.stream;
 
-  Future<Map<String, dynamic>> register(String username, String displayName, String email, String password) async {
+  Future<Map<String, dynamic>> register(
+    String username,
+    String displayName,
+    String email,
+    String password,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
@@ -28,13 +36,14 @@ class AuthService {
           'password': password,
         }),
       );
-
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 201) {
         return {'success': true, 'message': data['message']};
       } else {
-        return {'success': false, 'message': data['error'] ?? 'Gagal mendaftar.'};
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Gagal mendaftar.',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Terjadi kesalahan koneksi: $e'};
@@ -46,10 +55,7 @@ class AuthService {
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
       final data = jsonDecode(response.body);
@@ -60,20 +66,23 @@ class AuthService {
             'success': false,
             'status': 'pin_required',
             'temp_id': data['temp_id'],
-            'message': 'PIN Keamanan diperlukan'
+            'email': email,
+            'message': 'PIN Keamanan diperlukan',
           };
         }
-
         User user = User.fromJson(data['user']);
         return {
           'success': true,
           'access_token': data['access_token'],
           'refresh_token': data['refresh_token'],
-          'user': user
+          'user': user,
         };
-
       } else if (response.statusCode == 403) {
-        return {'success': false, 'message': data['error'], 'status': 'suspended'};
+        return {
+          'success': false,
+          'message': data['error'],
+          'status': 'suspended',
+        };
       } else {
         return {'success': false, 'message': data['error'] ?? 'Login gagal.'};
       }
@@ -86,27 +95,33 @@ class AuthService {
     try {
       final String? serverClientId = dotenv.env['SERVER_CLIENT_ID'];
       if (serverClientId == null) {
-        return {'success': false, 'message': 'Konfigurasi SERVER_CLIENT_ID tidak ditemukan'};
+        return {
+          'success': false,
+          'message': 'Konfigurasi SERVER_CLIENT_ID tidak ditemukan',
+        };
       }
 
       await _googleSignIn.initialize(serverClientId: serverClientId);
-
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
-
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final authorization = await googleUser.authorizationClient.authorizationForScopes(['email']);
+      final authorization = await googleUser.authorizationClient
+          .authorizationForScopes(['email']);
 
-      final firebase_auth.AuthCredential credential = firebase_auth.GoogleAuthProvider.credential(
-        accessToken: authorization?.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      final firebase_auth.AuthCredential credential =
+          firebase_auth.GoogleAuthProvider.credential(
+            accessToken: authorization?.accessToken,
+            idToken: googleAuth.idToken,
+          );
 
-      final firebase_auth.UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
-
+      final firebase_auth.UserCredential userCredential = await _firebaseAuth
+          .signInWithCredential(credential);
       final String? idToken = await userCredential.user?.getIdToken();
 
       if (idToken == null) {
-        return {'success': false, 'message': 'Gagal mendapatkan token autentikasi'};
+        return {
+          'success': false,
+          'message': 'Gagal mendapatkan token autentikasi',
+        };
       }
 
       final response = await http.post(
@@ -118,35 +133,139 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        if (data['status'] == 'pin_required') {
+          return {
+            'success': false,
+            'status': 'pin_required',
+            'temp_id': data['temp_id'],
+            'email': data['email'],
+            'needs_password_set': data['needs_password_set'] ?? false,
+            'message': 'PIN Keamanan diperlukan',
+          };
+        }
         User user = User.fromJson(data['user']);
-
         return {
           'success': true,
           'access_token': data['access_token'],
           'refresh_token': data['refresh_token'],
           'user': user,
-          'needs_password_set': data['needs_password_set'] ?? false
+          'needs_password_set': data['needs_password_set'] ?? false,
         };
       } else {
         await _googleSignIn.signOut();
         await _firebaseAuth.signOut();
-        return {'success': false, 'message': data['error'] ?? 'Login Google ditolak server.'};
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Login Google ditolak server.',
+        };
       }
-
     } catch (e) {
       return {'success': false, 'message': 'Gagal Login Google: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyPin(String tempId, String pin) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/verify-pin'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'temp_id': tempId, 'pin': pin}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        User user = User.fromJson(data['user']);
+        return {
+          'success': true,
+          'access_token': data['access_token'],
+          'refresh_token': data['refresh_token'],
+          'user': user,
+          'message': data['message'],
+        };
+      } else {
+        return {'success': false, 'message': data['error'] ?? 'PIN Salah'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> setPin(String pin, String token) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/set-pin'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'pin': pin}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message']};
+      }
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Gagal mengatur PIN',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> removePin(
+    String currentPin,
+    String token,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/remove-pin'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'current_pin': currentPin}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message']};
+      }
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Gagal menghapus PIN',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> resetPinByOtp(
+    String email,
+    String otp,
+    String? newPin,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/reset-pin-by-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'otp': otp, 'new_pin': newPin}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message']};
+      }
+      return {'success': false, 'message': data['error'] ?? 'Gagal reset PIN'};
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
     }
   }
 
   Future<String?> refreshToken() async {
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refresh_token');
-
     if (refreshToken == null) {
       _sessionExpiredController.add(null);
       return null;
     }
-
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/refresh'),
@@ -155,11 +274,9 @@ class AuthService {
           'Authorization': 'Bearer $refreshToken',
         },
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final newAccessToken = data['access_token'];
-
         await prefs.setString('auth_token', newAccessToken);
         return newAccessToken;
       } else {
@@ -192,7 +309,6 @@ class AuthService {
           'Authorization': 'Bearer $token',
         },
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return User.fromJson(data['user']);
@@ -203,26 +319,27 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> setPassword(String password, String token) async {
+  Future<Map<String, dynamic>> setPassword(
+    String password,
+    String token,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/set-password'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token'
+          'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'password': password,
-        }),
+        body: jsonEncode({'password': password}),
       );
-
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
-      } else {
-        return {'success': false, 'message': data['error'] ?? 'Gagal mengatur password'};
       }
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Gagal mengatur password',
+      };
     } catch (e) {
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
@@ -239,13 +356,19 @@ class AuthService {
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       }
-      return {'success': false, 'message': data['message'] ?? 'Gagal mengirim kode'};
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Gagal mengirim kode',
+      };
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
     }
   }
 
-  Future<Map<String, dynamic>> verifyResetCode(String email, String code) async {
+  Future<Map<String, dynamic>> verifyResetCode(
+    String email,
+    String code,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/password/verify-otp'),
@@ -253,16 +376,18 @@ class AuthService {
         body: jsonEncode({'email': email, 'otp': code}),
       );
       final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true};
-      }
+      if (response.statusCode == 200) return {'success': true};
       return {'success': false, 'message': data['error'] ?? 'Kode salah'};
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
     }
   }
 
-  Future<Map<String, dynamic>> resetPasswordFinish(String email, String code, String newPassword) async {
+  Future<Map<String, dynamic>> resetPasswordFinish(
+    String email,
+    String code,
+    String newPassword,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/password/reset'),
@@ -270,14 +395,17 @@ class AuthService {
         body: jsonEncode({
           'email': email,
           'otp': code,
-          'new_password': newPassword
+          'new_password': newPassword,
         }),
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       }
-      return {'success': false, 'message': data['error'] ?? 'Gagal reset password'};
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Gagal reset password',
+      };
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
     }

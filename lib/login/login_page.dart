@@ -1,4 +1,5 @@
 import 'package:amica/login/register_page.dart';
+import 'package:amica/login/verify_pin.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../navigation/main_navigator.dart';
@@ -60,7 +61,16 @@ class _LoginPageState extends State<LoginPage> {
         if (result['status'] == 'suspended') {
           _showErrorSnackbar('Akun dibekukan: ${result['message']}');
         } else if (result['status'] == 'pin_required') {
-          _showErrorSnackbar('Verifikasi PIN diperlukan (Fitur segera hadir)');
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => VerifyPinPage(
+                tempId: result['temp_id'],
+                email:
+                    result['email'] ??
+                    identifier,
+              ),
+            ),
+          );
         } else {
           _showErrorSnackbar(result['message'] ?? 'Login gagal.');
         }
@@ -75,7 +85,23 @@ class _LoginPageState extends State<LoginPage> {
 
     if (mounted) {
       setState(() => _isLoading = false);
+
       if (result['success'] == true) {
+        // Login Sukses langsung masuk
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainNavigator()),
+          (Route<dynamic> route) => false,
+        );
+      } else if (result['status'] == 'pin_required') {
+        // --- LOGIKA PIN HANDLING GOOGLE DISINI ---
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => VerifyPinPage(
+              tempId: result['temp_id'],
+              email: result['email'],
+            ),
+          ),
+        );
       } else {
         _showErrorSnackbar(result['message'] ?? 'Gagal login Google');
       }

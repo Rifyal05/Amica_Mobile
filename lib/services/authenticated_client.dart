@@ -10,145 +10,148 @@ class AuthenticatedClient {
     return prefs.getString('auth_token');
   }
 
-  Future<http.Response> get(Uri url) async {
+  // --- GET ---
+  Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
     String? token = await _getAccessToken();
 
-    var response = await http.get(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-    );
+    Map<String, String> requestHeaders = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    if (headers != null) {
+      requestHeaders.addAll(headers);
+    }
+
+    var response = await http.get(url, headers: requestHeaders);
 
     if (response.statusCode == 401) {
       final newToken = await _authService.refreshToken();
 
       if (newToken != null) {
-        response = await http.get(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $newToken',
-          },
-        );
+        requestHeaders['Authorization'] = 'Bearer $newToken';
+        response = await http.get(url, headers: requestHeaders);
       }
     }
 
     return response;
   }
 
-  Future<http.Response> post(Uri url, {Object? body}) async {
+  // --- POST ---
+  Future<http.Response> post(
+    Uri url, {
+    Object? body,
+    Map<String, String>? headers,
+  }) async {
     String? token = await _getAccessToken();
 
-    var response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: body,
-    );
+    Map<String, String> requestHeaders = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    if (headers != null) {
+      requestHeaders.addAll(headers);
+    }
+
+    var response = await http.post(url, headers: requestHeaders, body: body);
 
     if (response.statusCode == 401) {
       final newToken = await _authService.refreshToken();
 
       if (newToken != null) {
-        response = await http.post(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $newToken',
-          },
-          body: body,
-        );
+        requestHeaders['Authorization'] = 'Bearer $newToken';
+        response = await http.post(url, headers: requestHeaders, body: body);
       }
     }
     return response;
   }
 
-  Future<http.Response> put(Uri url, {Object? body}) async {
+  // --- PUT ---
+  Future<http.Response> put(
+    Uri url, {
+    Object? body,
+    Map<String, String>? headers,
+  }) async {
     String? token = await _getAccessToken();
 
-    var response = await http.put(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: body,
-    );
+    Map<String, String> requestHeaders = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    if (headers != null) {
+      requestHeaders.addAll(headers);
+    }
+
+    var response = await http.put(url, headers: requestHeaders, body: body);
 
     if (response.statusCode == 401) {
       final newToken = await _authService.refreshToken();
 
       if (newToken != null) {
-        response = await http.put(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $newToken',
-          },
-          body: body,
-        );
+        requestHeaders['Authorization'] = 'Bearer $newToken';
+        response = await http.put(url, headers: requestHeaders, body: body);
       }
     }
     return response;
   }
 
-  Future<http.Response> patch(Uri url, {Object? body}) async {
+  // --- PATCH ---
+  Future<http.Response> patch(
+    Uri url, {
+    Object? body,
+    Map<String, String>? headers,
+  }) async {
     String? token = await _getAccessToken();
 
-    var response = await http.patch(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: body,
-    );
+    Map<String, String> requestHeaders = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    if (headers != null) {
+      requestHeaders.addAll(headers);
+    }
+
+    var response = await http.patch(url, headers: requestHeaders, body: body);
 
     if (response.statusCode == 401) {
       final newToken = await _authService.refreshToken();
 
       if (newToken != null) {
-        response = await http.patch(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $newToken',
-          },
-          body: body,
-        );
+        requestHeaders['Authorization'] = 'Bearer $newToken';
+        response = await http.patch(url, headers: requestHeaders, body: body);
       }
     }
     return response;
   }
 
-  Future<http.Response> delete(Uri url, {Object? body}) async {
+  // --- DELETE ---
+  Future<http.Response> delete(
+    Uri url, {
+    Object? body,
+    Map<String, String>? headers,
+  }) async {
     String? token = await _getAccessToken();
 
-    var response = await http.delete(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: body,
-    );
+    Map<String, String> requestHeaders = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    if (headers != null) {
+      requestHeaders.addAll(headers);
+    }
+
+    var response = await http.delete(url, headers: requestHeaders, body: body);
 
     if (response.statusCode == 401) {
       final newToken = await _authService.refreshToken();
 
       if (newToken != null) {
-        response = await http.delete(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $newToken',
-          },
-          body: body,
-        );
+        requestHeaders['Authorization'] = 'Bearer $newToken';
+        response = await http.delete(url, headers: requestHeaders, body: body);
       }
     }
     return response;

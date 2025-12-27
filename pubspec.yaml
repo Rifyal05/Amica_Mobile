@@ -31,6 +31,8 @@ dependencies:
   flutter_dotenv:
   onesignal_flutter:
   socket_io_client:
+  timeago:
+  flutter_markdown_plus:
 
 dev_dependencies:
   flutter_test:

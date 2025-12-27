@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:amica/mainpage/article_detail_page.dart';
-import 'package:amica/mainpage/sdq_dashboard_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../models/article_model.dart';
-// Pastikan path ApiConfig sesuai dengan struktur projectmu
-import '../services/api_config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+
+// Import halaman fitur
+import 'article_detail_page.dart';
+import 'sdq_dashboard_page.dart';
+import 'chatbot_page.dart';
+
+import '../models/article_model.dart';
+import '../services/api_config.dart';
 
 class Educative extends StatefulWidget {
   const Educative({super.key});
@@ -24,7 +27,7 @@ class _EducativePageState extends State<Educative>
   int _selectedFilterIndex = 0;
   final List<String> _filters = [
     'Semua',
-    'CyberBullying',
+    'Bullying',
     'Peran Orang tua',
     'Penanganan kasus',
     'Hukum dan Keamanan',
@@ -36,14 +39,11 @@ class _EducativePageState extends State<Educative>
 
   List<Article> _articles = [];
   Article? _featuredArticle;
-
-  // ✨ 2. Variabel Pagination
   int _page = 1;
   final int _limit = 10;
   bool _hasNextPage = true;
   bool _isFirstLoadRunning = true;
   bool _isLoadMoreRunning = false;
-
   late ScrollController _scrollController;
   String _searchQuery = '';
   String _errorMessage = '';
@@ -74,16 +74,12 @@ class _EducativePageState extends State<Educative>
   String _buildApiUrl(int page) {
     String baseUrlStr =
         '${ApiConfig.baseUrl}/api/articles?page=$page&limit=$_limit';
-
     if (_selectedFilterIndex != 0) {
-      String category = _filters[_selectedFilterIndex];
-      baseUrlStr += '&category=$category';
+      baseUrlStr += '&category=${_filters[_selectedFilterIndex]}';
     }
-
     if (_searchQuery.isNotEmpty) {
       baseUrlStr += '&search=$_searchQuery';
     }
-
     return baseUrlStr;
   }
 
@@ -92,87 +88,61 @@ class _EducativePageState extends State<Educative>
       _isFirstLoadRunning = true;
       _errorMessage = '';
     });
-
     try {
       final response = await http.get(Uri.parse(_buildApiUrl(1)));
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> articlesJson = data['articles'];
-        final List<Article> loadedArticles = articlesJson
+        final List<Article> loaded = (data['articles'] as List)
             .map((json) => Article.fromJson(json))
             .toList();
 
-        bool hasNext = loadedArticles.length == _limit;
-        if (data['pagination'] != null) {
+        bool hasNext = loaded.length == _limit;
+        if (data['pagination'] != null)
           hasNext = data['pagination']['has_next'] ?? hasNext;
-        }
 
         setState(() {
-          _articles = loadedArticles;
+          _articles = loaded;
           _hasNextPage = hasNext;
           if (_articles.isNotEmpty) {
-            final featuredList = _articles.where((a) => a.isFeatured).toList();
-            if (featuredList.isNotEmpty) {
-              _featuredArticle =
-                  featuredList[Random().nextInt(featuredList.length)];
-            } else {
-              _featuredArticle = _articles.first;
-            }
+            final featured = _articles.where((a) => a.isFeatured).toList();
+            _featuredArticle = featured.isNotEmpty
+                ? featured[Random().nextInt(featured.length)]
+                : _articles.first;
           } else {
             _featuredArticle = null;
           }
         });
       } else {
-        throw Exception('Server Error: ${response.statusCode}');
+        setState(() => _errorMessage = "Server Error: ${response.statusCode}");
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().contains("SocketException")
-            ? "Tidak ada koneksi internet."
-            : "Gagal memuat data.";
-      });
+      setState(() => _errorMessage = "Gagal memuat data: ${e.toString()}");
     } finally {
-      setState(() {
-        _isFirstLoadRunning = false;
-      });
+      setState(() => _isFirstLoadRunning = false);
     }
   }
 
   Future<void> _fetchNextBatch() async {
     if (!_hasNextPage) return;
-
-    setState(() {
-      _isLoadMoreRunning = true;
-    });
-
+    setState(() => _isLoadMoreRunning = true);
     try {
       final response = await http.get(Uri.parse(_buildApiUrl(_page + 1)));
-
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> articlesJson = data['articles'];
-        final List<Article> newArticles = articlesJson
+        final data = json.decode(response.body);
+        final List<Article> newArts = (data['articles'] as List)
             .map((json) => Article.fromJson(json))
             .toList();
-
-        bool hasNext = newArticles.length == _limit;
-        if (data['pagination'] != null) {
-          hasNext = data['pagination']['has_next'] ?? hasNext;
-        }
-
         setState(() {
           _page++;
-          _articles.addAll(newArticles);
-          _hasNextPage = hasNext;
+          _articles.addAll(newArts);
+          _hasNextPage = (data['pagination'] != null)
+              ? data['pagination']['has_next']
+              : newArts.length == _limit;
         });
       }
-    } catch (e) {
-      debugPrint("Error loading more: $e");
+    } catch (_) {
     } finally {
-      setState(() {
-        _isLoadMoreRunning = false;
-      });
+      setState(() => _isLoadMoreRunning = false);
     }
   }
 
@@ -183,23 +153,48 @@ class _EducativePageState extends State<Educative>
     await _fetchFirstBatch();
   }
 
-  void _onSearchChanged(String value) {
-    setState(() {
-      _searchQuery = value;
-      _page = 1;
-      _hasNextPage = true;
-    });
-    _fetchFirstBatch();
-  }
-
-  void _onFilterSelected(int index) {
-    setState(() {
-      _selectedFilterIndex = index;
-      _page = 1;
-      _hasNextPage = true;
-      _searchQuery = '';
-    });
-    _fetchFirstBatch();
+  void _showFeatureOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(
+                  Icons.health_and_safety_outlined,
+                  color: Colors.orange,
+                ),
+                title: const Text('Deteksi Dini (Kuis SDQ)'),
+                onTap: () {
+                  Navigator.pop(bc);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SdDashboardPage(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.smart_toy_outlined,
+                  color: Colors.purple,
+                ),
+                title: const Text('Tanya Amica (AI Assistant)'),
+                onTap: () {
+                  Navigator.pop(bc);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const ChatbotPage(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -255,7 +250,6 @@ class _EducativePageState extends State<Educative>
                       ),
                     ),
 
-                    // Empty State
                     if (!_isFirstLoadRunning && _articles.isEmpty)
                       SliverFillRemaining(
                         child: Center(
@@ -294,21 +288,17 @@ class _EducativePageState extends State<Educative>
                         ),
                       ),
 
-                    // Spacer bawah
                     const SliverToBoxAdapter(child: SizedBox(height: 80)),
                   ],
                 ),
               ),
             ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'article_tab',
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const SdDashboardPage()),
-          );
-        },
-        label: const Text('Deteksi Dini'),
-        icon: const Icon(Icons.quiz_outlined),
+        heroTag: 'educative_fab',
+        onPressed:
+            _showFeatureOptions, // Panggil fungsi untuk menampilkan pilihan
+        label: const Text('Layanan Amica'),
+        icon: const Icon(Icons.psychology_outlined),
       ),
     );
   }
@@ -380,7 +370,14 @@ class _EducativePageState extends State<Educative>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
-        onSubmitted: _onSearchChanged,
+        onSubmitted: (val) {
+          setState(() {
+            _searchQuery = val;
+            _page = 1;
+            _hasNextPage = true;
+          });
+          _fetchFirstBatch();
+        },
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: 'Cari artikel...',
@@ -392,7 +389,12 @@ class _EducativePageState extends State<Educative>
               ? IconButton(
                   icon: const Icon(Icons.clear),
                   onPressed: () {
-                    _onSearchChanged('');
+                    setState(() {
+                      _searchQuery = '';
+                      _page = 1;
+                      _hasNextPage = true;
+                    });
+                    _fetchFirstBatch();
                   },
                 )
               : null,
@@ -420,7 +422,15 @@ class _EducativePageState extends State<Educative>
             label: Text(_filters[index]),
             selected: isSelected,
             onSelected: (selected) {
-              if (selected) _onFilterSelected(index);
+              if (selected) {
+                setState(() {
+                  _selectedFilterIndex = index;
+                  _page = 1;
+                  _hasNextPage = true;
+                  _searchQuery = '';
+                });
+                _fetchFirstBatch();
+              }
             },
             backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
             selectedColor: Theme.of(context).colorScheme.primary,
@@ -510,7 +520,6 @@ class _EducativePageState extends State<Educative>
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20.0),
-                  // ✨ Gunakan helper image
                   child: _buildNetworkImage(article.imageUrl),
                 ),
               ),

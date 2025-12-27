@@ -9,6 +9,7 @@ class User {
   final String role;
   final String? authProvider;
   final bool isFollowing;
+  final bool hasPin; // Tambahan properti baru
 
   User({
     required this.id,
@@ -21,6 +22,7 @@ class User {
     required this.role,
     this.authProvider,
     this.isFollowing = false,
+    this.hasPin = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class User {
       authProvider: json['auth_provider'],
       isFollowing:
           json['is_following'] ?? json['status']?['is_following'] ?? false,
+      hasPin: json['has_pin'] ?? false,
     );
   }
 
@@ -51,6 +54,7 @@ class User {
       'role': role,
       'auth_provider': authProvider,
       'is_following': isFollowing,
+      'has_pin': hasPin,
     };
   }
 }

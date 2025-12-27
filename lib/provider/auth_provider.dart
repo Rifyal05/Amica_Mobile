@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as client;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
-import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../models/user_model.dart';
@@ -18,11 +16,8 @@ class AuthProvider with ChangeNotifier {
   bool _needsPasswordSet = false;
 
   bool get isLoggedIn => _isLoggedIn;
-
   User? get currentUser => _currentUser;
-
   String? get token => _token;
-
   bool get needsPasswordSet => _needsPasswordSet;
 
   AuthProvider() {
@@ -91,10 +86,18 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<String?> register(String username, String displayName, String email,
-      String password) async {
+  Future<String?> register(
+    String username,
+    String displayName,
+    String email,
+    String password,
+  ) async {
     final result = await _authService.register(
-        username, displayName, email, password);
+      username,
+      displayName,
+      email,
+      password,
+    );
     if (result['success']) {
       return null;
     } else {
@@ -102,8 +105,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> attemptLogin(String email,
-      String password) async {
+  Future<Map<String, dynamic>> attemptLogin(
+    String email,
+    String password,
+  ) async {
     final result = await _authService.login(email, password);
 
     if (result['success'] == true) {
@@ -127,7 +132,9 @@ class AuthProvider with ChangeNotifier {
       return {
         'success': false,
         'message': result['message'],
-        'status': result['status']
+        'status': result['status'],
+        'temp_id': result['temp_id'],
+        'email': email,
       };
     }
   }
@@ -153,8 +160,67 @@ class AuthProvider with ChangeNotifier {
 
       return {'success': true};
     } else {
-      return {'success': false, 'message': result['message']};
+      return {
+        'success': false,
+        'message': result['message'],
+        'status': result['status'],
+        'temp_id': result['temp_id'],
+        'email': result['email'],
+        'needs_password_set': result['needs_password_set'],
+      };
     }
+  }
+
+  Future<String?> verifyPinLogin(String tempId, String pin) async {
+    final result = await _authService.verifyPin(tempId, pin);
+    if (result['success'] == true) {
+      _token = result['access_token'];
+      String refreshToken = result['refresh_token'];
+      _currentUser = result['user'];
+      _isLoggedIn = true;
+      _needsPasswordSet = false;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', _token!);
+      await prefs.setString('refresh_token', refreshToken);
+      await prefs.setString('user_data', jsonEncode(_currentUser!.toJson()));
+      await prefs.setBool('needs_password_set', false);
+
+      notifyListeners();
+      await _syncOneSignalId();
+      return null;
+    }
+    return result['message'];
+  }
+
+  Future<String?> setPin(String pin) async {
+    if (_token == null) return "Token tidak valid";
+    final result = await _authService.setPin(pin, _token!);
+    if (result['success']) {
+      await refreshCurrentUser();
+      return null;
+    }
+    return result['message'];
+  }
+
+  Future<String?> removePin(String currentPin) async {
+    if (_token == null) return "Token tidak valid";
+    final result = await _authService.removePin(currentPin, _token!);
+    if (result['success']) {
+      await refreshCurrentUser();
+      return null;
+    }
+    return result['message'];
+  }
+
+  Future<String?> resetPinByOtp(
+    String email,
+    String otp,
+    String? newPin,
+  ) async {
+    final result = await _authService.resetPinByOtp(email, otp, newPin);
+    if (result['success']) return null;
+    return result['message'];
   }
 
   Future<String?> setPassword(String password) async {
@@ -188,27 +254,26 @@ class AuthProvider with ChangeNotifier {
     return result['message'];
   }
 
-  Future<String?> resetPasswordFinish(String email, String code,
-      String newPassword) async {
+  Future<String?> resetPasswordFinish(
+    String email,
+    String code,
+    String newPassword,
+  ) async {
     final result = await _authService.resetPasswordFinish(
-        email, code, newPassword);
+      email,
+      code,
+      newPassword,
+    );
     if (result['success']) return null;
     return result['message'];
   }
 
   Future<void> performLogout() async {
-    try {
-      await client.post(
-          Uri.parse('${ApiConfig.baseUrl}/api/auth/logout-device'));
-    } catch (e) {
-      debugPrint(e.toString());
-    }
-
     OneSignal.logout();
-
     await _authService.logout();
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('needs_password_set');
+    await prefs.clear();
 
     _isLoggedIn = false;
     _currentUser = null;

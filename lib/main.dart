@@ -1,7 +1,10 @@
+import 'package:amica/provider/bot_provider.dart';
 import 'package:amica/provider/chat_provider.dart';
 import 'package:amica/provider/comment_provider.dart';
+import 'package:amica/provider/notification_provider.dart';
 import 'package:amica/provider/post_provider.dart';
 import 'package:amica/provider/profile_provider.dart';
+import 'package:amica/provider/sdq_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -57,6 +60,11 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => CommentProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => SdqProvider()),
+        ChangeNotifierProvider(create: (_) => BotProvider()),
+
+
       ],
       child: const MyApp(),
     ),

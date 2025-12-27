@@ -33,6 +33,7 @@ class ChatProvider with ChangeNotifier {
     _myUserId = null;
 
     if (socket != null) {
+      socket!.io.options?['autoConnect'] = false;
       socket!.disconnect();
       socket!.dispose();
       socket = null;
@@ -99,18 +100,14 @@ class ChatProvider with ChangeNotifier {
   }
 
   void connectSocket(String token, String myUserId) {
-    if (_myUserId != null && _myUserId != myUserId) {
-      clearData();
-    }
-
-    _myUserId = myUserId;
-
-    if (socket != null && socket!.connected) return;
+    if (_myUserId == myUserId && socket != null && socket!.connected) return;
 
     if (socket != null) {
       socket!.disconnect();
       socket!.dispose();
     }
+
+    _myUserId = myUserId;
 
     socket = IO.io(
       ApiConfig.baseUrl,
@@ -124,9 +121,10 @@ class ChatProvider with ChangeNotifier {
 
     socket!.onConnect((_) {});
 
+    socket!.onDisconnect((_) {});
+
     socket!.on('new_message', (data) {
       final newMessage = ChatMessage.fromJson(data);
-
       final currentList = _messagesCache[newMessage.chatId] ?? [];
 
       final tempIndex = currentList.indexWhere(
@@ -145,7 +143,6 @@ class ChatProvider with ChangeNotifier {
       }
 
       _messagesCache[newMessage.chatId] = currentList;
-
       _updateInboxLocal(newMessage);
       notifyListeners();
     });
@@ -183,11 +180,12 @@ class ChatProvider with ChangeNotifier {
       _typingStatus[chatId] = isTyping ? username : null;
       notifyListeners();
     });
+
+    socket!.connect();
   }
 
   void _updateInboxLocal(ChatMessage msg) {
     int index = _inbox.indexWhere((c) => c.id == msg.chatId);
-
     int newUnreadCount = 0;
 
     if (index != -1) {
@@ -265,8 +263,7 @@ class ChatProvider with ChangeNotifier {
 
   @override
   void dispose() {
-    socket?.disconnect();
-    socket?.dispose();
+    clearData();
     super.dispose();
   }
 }
