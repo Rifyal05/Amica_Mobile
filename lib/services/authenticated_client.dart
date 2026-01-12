@@ -10,7 +10,6 @@ class AuthenticatedClient {
     return prefs.getString('auth_token');
   }
 
-  // --- GET ---
   Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
     String? token = await _getAccessToken();
 
@@ -97,7 +96,6 @@ class AuthenticatedClient {
     return response;
   }
 
-  // --- PATCH ---
   Future<http.Response> patch(
     Uri url, {
     Object? body,
@@ -127,7 +125,6 @@ class AuthenticatedClient {
     return response;
   }
 
-  // --- DELETE ---
   Future<http.Response> delete(
     Uri url, {
     Object? body,

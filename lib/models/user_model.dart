@@ -1,3 +1,5 @@
+import '../services/api_config.dart';
+
 class User {
   final String id;
   final String username;
@@ -9,7 +11,9 @@ class User {
   final String role;
   final String? authProvider;
   final bool isFollowing;
-  final bool hasPin; // Tambahan properti baru
+  final bool hasPin;
+  final bool isVerified;
+  final Map<String, dynamic>? stats;
 
   User({
     required this.id,
@@ -23,13 +27,50 @@ class User {
     this.authProvider,
     this.isFollowing = false,
     this.hasPin = false,
+    this.isVerified = false,
+    this.stats,
   });
+
+  String? get fullAvatarUrl => ApiConfig.getFullUrl(avatarUrl);
+  String? get fullBannerUrl => ApiConfig.getFullUrl(bannerUrl);
+
+  User copyWith({
+    String? id,
+    String? username,
+    String? displayName,
+    String? email,
+    String? avatarUrl,
+    String? bannerUrl,
+    String? bio,
+    String? role,
+    String? authProvider,
+    bool? isFollowing,
+    bool? hasPin,
+    bool? isVerified,
+    Map<String, dynamic>? stats,
+  }) {
+    return User(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      bannerUrl: bannerUrl ?? this.bannerUrl,
+      bio: bio ?? this.bio,
+      role: role ?? this.role,
+      authProvider: authProvider ?? this.authProvider,
+      isFollowing: isFollowing ?? this.isFollowing,
+      hasPin: hasPin ?? this.hasPin,
+      isVerified: isVerified ?? this.isVerified,
+      stats: stats ?? this.stats,
+    );
+  }
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] ?? '',
       username: json['username'] ?? '',
-      displayName: json['display_name'] ?? json['username'],
+      displayName: json['display_name'] ?? json['username'] ?? '',
       email: json['email'] ?? '',
       avatarUrl: json['avatar_url'],
       bannerUrl: json['banner_url'],
@@ -39,6 +80,8 @@ class User {
       isFollowing:
           json['is_following'] ?? json['status']?['is_following'] ?? false,
       hasPin: json['has_pin'] ?? false,
+      isVerified: json['is_verified'] ?? false,
+      stats: json['stats'],
     );
   }
 
@@ -55,6 +98,8 @@ class User {
       'auth_provider': authProvider,
       'is_following': isFollowing,
       'has_pin': hasPin,
+      'is_verified': isVerified,
+      'stats': stats,
     };
   }
 }

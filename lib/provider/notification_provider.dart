@@ -12,6 +12,8 @@ class NotificationProvider with ChangeNotifier {
   List<AppNotification> get notifications => _notifications;
   bool get isLoading => _isLoading;
 
+  int get unreadCount => _notifications.where((n) => !n.isRead).length;
+
   Future<void> fetchNotifications() async {
     _isLoading = true;
     notifyListeners();
@@ -49,7 +51,7 @@ class NotificationProvider with ChangeNotifier {
               referenceId: n.referenceId,
               text: n.text,
               createdAt: n.createdAt,
-              isRead: true, // Set true
+              isRead: true,
             ),
           )
           .toList();

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/sdq_provider.dart';
-import '../models/sdq_model.dart';
 import 'sdq_quiz_page.dart';
-import 'sdq_results_page.dart'; // Import halaman detail hasil
+import 'sdq_results_page.dart';
 
 class SdDashboardPage extends StatefulWidget {
   const SdDashboardPage({super.key});
@@ -30,7 +29,7 @@ class _SdDashboardPageState extends State<SdDashboardPage> {
       case 'abnormal':
         return Colors.red;
       case 'info':
-        return Colors.blue; // For prosocial, just a neutral info color
+        return Colors.blue;
       default:
         return Colors.grey;
     }
@@ -59,7 +58,6 @@ class _SdDashboardPageState extends State<SdDashboardPage> {
                       ),
                     )
                     .then((_) {
-                      // Refresh history saat kembali dari quiz
                       context.read<SdqProvider>().fetchHistory();
                     });
               },
@@ -126,22 +124,25 @@ class _SdDashboardPageState extends State<SdDashboardPage> {
                             trailing: const Icon(Icons.chevron_right),
 
                             onTap: () async {
-                              final fullResult = await context
-                                  .read<SdqProvider>()
-                                  .fetchResultDetail(item.id);
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(child: CircularProgressIndicator()),
+                              );
+
+                              final fullResult = await context.read<SdqProvider>().fetchResultDetail(item.id);
+
+                              if (context.mounted) Navigator.pop(context);
 
                               if (fullResult != null && context.mounted) {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        SdResultDetailPage(result: fullResult),
+                                    builder: (context) => SdResultDetailPage(result: fullResult),
                                   ),
                                 );
                               } else if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Gagal membuka detail."),
-                                  ),
+                                  const SnackBar(content: Text("Gagal memuat detail kuis.")),
                                 );
                               }
                             },

@@ -29,8 +29,8 @@ class SdqFullResult {
 
   factory SdqFullResult.fromJson(Map<String, dynamic> json) {
     return SdqFullResult(
-      scores: json['scores'],
-      interpretation: json['interpretation'],
+      scores: Map<String, dynamic>.from(json['scores'] ?? {}),
+      interpretation: Map<String, dynamic>.from(json['interpretation'] ?? {}),
     );
   }
 }

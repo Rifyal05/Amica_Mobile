@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../provider/post_provider.dart';
+import '../provider/navigation_provider.dart';
+import '../provider/notification_provider.dart';
 import 'widgets/post_card.dart';
 import 'create_post_page.dart';
 import 'notifications_page.dart';
@@ -20,6 +22,8 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
   late ScrollController _scrollController;
   bool _isNavVisible = true;
 
+  NavigationProvider? _navProvider;
+
   @override
   void initState() {
     super.initState();
@@ -27,11 +31,37 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
     _scrollController.addListener(_scrollListener);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<PostProvider>();
-      if (provider.posts.isEmpty) {
-        provider.fetchPosts();
+      final postProvider = context.read<PostProvider>();
+      final notifProvider = context.read<NotificationProvider>();
+
+      if (postProvider.posts.isEmpty) {
+        postProvider.fetchPosts();
       }
+      notifProvider.fetchNotifications();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_navProvider == null) {
+      _navProvider = Provider.of<NavigationProvider>(context, listen: false);
+      _navProvider!.addListener(_handleScrollToTop);
+    }
+  }
+
+  void _handleScrollToTop() {
+    if (_navProvider!.selectedIndex == 0 &&
+        _navProvider!.scrollToTopTime != null) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+        _onRefresh();
+      }
+    }
   }
 
   void _scrollListener() {
@@ -51,6 +81,7 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    _navProvider?.removeListener(_handleScrollToTop);
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
@@ -243,17 +274,26 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
                       ),
                     ),
                     actions: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const NotificationsPage(),
-                          ),
-                        ),
-                        icon: Icon(
-                          Icons.notifications_none_outlined,
-                          color: colorScheme.onSurface,
-                          size: 26,
-                        ),
+                      Consumer<NotificationProvider>(
+                        builder: (context, notifProvider, child) {
+                          return IconButton(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsPage(),
+                              ),
+                            ),
+                            icon: Badge(
+                              isLabelVisible: notifProvider.unreadCount > 0,
+                              label: Text('${notifProvider.unreadCount}'),
+                              backgroundColor: colorScheme.error,
+                              child: Icon(
+                                Icons.notifications_none_outlined,
+                                color: colorScheme.onSurface,
+                                size: 26,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       IconButton(
                         onPressed: _openCreatePost,

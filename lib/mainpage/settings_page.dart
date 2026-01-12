@@ -3,13 +3,19 @@ import 'package:amica/mainpage/change_email_page.dart';
 import 'package:amica/mainpage/change_password_page.dart';
 import 'package:amica/mainpage/feedback_page.dart';
 import 'package:amica/mainpage/blocked_user_page.dart';
+import 'package:amica/mainpage/professional_registration_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:path_provider/path_provider.dart';
 import '../provider/chat_provider.dart';
 import '../provider/font_provider.dart';
 import '../provider/theme_provider.dart';
 import '../provider/auth_provider.dart';
+import 'moderation_list_page.dart';
+import '../provider/moderation_provider.dart';
+import '../services/custom_cache_manager.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -144,6 +150,60 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _clearSystemCache() async {
+    try {
+      await PostCacheManager.instance.emptyCache();
+      await ProfileCacheManager.instance.emptyCache();
+      await DefaultCacheManager().emptyCache();
+
+      final tempDir = await getTemporaryDirectory();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+        await tempDir.create();
+      }
+
+      final cacheDir = await getApplicationCacheDirectory();
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        await cacheDir.create();
+      }
+    } catch (e) {
+      debugPrint("Cache clear error: $e");
+    }
+  }
+
+  void _showCacheClearConfirmation() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Bersihkan Cache?"),
+        content: const Text(
+          "Ini akan menghapus semua gambar dan data sementara untuk mengosongkan ruang penyimpanan perangkat.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _clearSystemCache();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Penyimpanan berhasil dibersihkan!"),
+                  ),
+                );
+              }
+            },
+            child: const Text("Bersihkan", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fontProvider = context.watch<FontProvider>();
@@ -152,6 +212,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     final isDarkMode = themeProvider.isDarkMode(context);
     final hasPin = authProvider.currentUser?.hasPin ?? false;
+    final isVerified = authProvider.currentUser?.isVerified ?? false;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pengaturan')),
@@ -181,6 +242,55 @@ class _SettingsPageState extends State<SettingsPage> {
               MaterialPageRoute(builder: (context) => const BlockedUsersPage()),
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.gpp_bad_outlined, color: Colors.orange),
+            title: const Text('Status Moderasi Konten'),
+            subtitle: const Text(
+              'Lihat postingan yang ditolak atau sedang banding',
+            ),
+            trailing: Consumer<ModerationProvider>(
+              builder: (context, mod, _) => mod.moderatedPosts.isNotEmpty
+                  ? Badge(label: Text('${mod.moderatedPosts.length}'))
+                  : const Icon(Icons.arrow_forward_ios, size: 14),
+            ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const ModerationListPage(),
+              ),
+            ),
+          ),
+          const Divider(),
+          _buildSectionHeader('Profesional'),
+          if (!isVerified)
+            ListTile(
+              leading: const Icon(Icons.verified_outlined, color: Colors.blue),
+              title: const Text('Daftar sebagai Psikolog'),
+              subtitle: const Text(
+                'Verifikasi akun untuk lencana & fitur khusus',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProfessionalRegistrationPage(),
+                  ),
+                );
+              },
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.verified, color: Colors.blue),
+              title: const Text('Status Akun: Terverifikasi'),
+              subtitle: const Text(
+                'Akun anda telah terverifikasi sebagai psikolog.',
+              ),
+              trailing: const Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 20,
+              ),
+            ),
           const Divider(),
           _buildSectionHeader('Keamanan'),
           SwitchListTile(
@@ -219,6 +329,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
+          ),
+          const Divider(),
+          _buildSectionHeader('Data & Cache'),
+          ListTile(
+            leading: const Icon(Icons.cleaning_services_outlined),
+            title: const Text('Bersihkan Penyimpanan'),
+            subtitle: const Text(
+              'Hapus cache gambar dan data sementara aplikasi',
+            ),
+            onTap: _showCacheClearConfirmation,
           ),
           const Divider(),
           _buildSectionHeader('Lainnya'),

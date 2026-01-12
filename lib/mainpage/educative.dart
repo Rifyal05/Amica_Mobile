@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 
-// Import halaman fitur
 import 'article_detail_page.dart';
 import 'sdq_dashboard_page.dart';
 import 'chatbot_page.dart';
 
 import '../models/article_model.dart';
 import '../services/api_config.dart';
+import '../provider/navigation_provider.dart';
 
 class Educative extends StatefulWidget {
   const Educative({super.key});
@@ -47,6 +48,7 @@ class _EducativePageState extends State<Educative>
   late ScrollController _scrollController;
   String _searchQuery = '';
   String _errorMessage = '';
+  NavigationProvider? _navProvider;
 
   @override
   void initState() {
@@ -56,10 +58,35 @@ class _EducativePageState extends State<Educative>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_navProvider == null) {
+      _navProvider = Provider.of<NavigationProvider>(context, listen: false);
+      _navProvider!.addListener(_handleScrollToTop);
+    }
+  }
+
+  @override
   void dispose() {
+    _navProvider?.removeListener(_handleScrollToTop);
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleScrollToTop() {
+    if (_navProvider != null &&
+        _navProvider!.selectedIndex == 1 &&
+        _navProvider!.scrollToTopTime != null) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+        _handleRefresh();
+      }
+    }
   }
 
   void _scrollListener() {
@@ -97,8 +124,9 @@ class _EducativePageState extends State<Educative>
             .toList();
 
         bool hasNext = loaded.length == _limit;
-        if (data['pagination'] != null)
+        if (data['pagination'] != null) {
           hasNext = data['pagination']['has_next'] ?? hasNext;
+        }
 
         setState(() {
           _articles = loaded;
@@ -221,7 +249,6 @@ class _EducativePageState extends State<Educative>
                     SliverToBoxAdapter(child: _buildFilterChips(context)),
                     const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                    // Featured Section
                     if (_searchQuery.isEmpty && _featuredArticle != null)
                       SliverToBoxAdapter(
                         child: Padding(
@@ -295,8 +322,7 @@ class _EducativePageState extends State<Educative>
             ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'educative_fab',
-        onPressed:
-            _showFeatureOptions, // Panggil fungsi untuk menampilkan pilihan
+        onPressed: _showFeatureOptions,
         label: const Text('Layanan Amica'),
         icon: const Icon(Icons.psychology_outlined),
       ),

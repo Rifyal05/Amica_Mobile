@@ -12,6 +12,7 @@ import '../services/report_serices.dart';
 import 'helper/utils_helper.dart';
 import 'widgets/post_card.dart';
 import 'user_profile_page.dart';
+import 'widgets/verified_badge.dart';
 
 class PostDetailPage extends StatefulWidget {
   final Post post;
@@ -225,6 +226,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         return _CommentTree(
                           comment: comment,
                           onReply: _startReply,
+                          postId: widget.post.id,
                         );
                       }, childCount: commentProvider.comments.length),
                     ),
@@ -241,7 +243,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   Widget _buildInputArea(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
@@ -250,81 +251,87 @@ class _PostDetailPageState extends State<PostDetailPage> {
           ),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_replyingToComment != null)
-            Container(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.turn_right,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Membalas ${_replyingToComment!.user.displayName}",
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: _cancelReply,
-                    child: const Icon(Icons.close, size: 18),
-                  ),
-                ],
-              ),
-            ),
-          Row(
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _commentController,
-                  focusNode: _focusNode,
-                  enabled: !_isSending,
-                  minLines: 1,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: _replyingToComment != null
-                        ? "Tulis balasan..."
-                        : "Tulis komentar...",
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.5),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    isDense: true,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _isSending
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : IconButton(
-                      onPressed: _sendComment,
-                      icon: Icon(
-                        Icons.send_rounded,
+              if (_replyingToComment != null)
+                Container(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.turn_right,
+                        size: 16,
                         color: theme.colorScheme.primary,
                       ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Membalas ${_replyingToComment!.user.displayName}",
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: _cancelReply,
+                        child: const Icon(Icons.close, size: 18),
+                      ),
+                    ],
+                  ),
+                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      focusNode: _focusNode,
+                      enabled: !_isSending,
+                      minLines: 1,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText: _replyingToComment != null
+                            ? "Tulis balasan..."
+                            : "Tulis komentar...",
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceContainerHighest
+                            .withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        isDense: true,
+                      ),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  _isSending
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : IconButton(
+                          onPressed: _sendComment,
+                          icon: Icon(
+                            Icons.send_rounded,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -394,8 +401,13 @@ class _ReplyContextOverlay extends StatelessWidget {
 class _CommentTree extends StatefulWidget {
   final Comment comment;
   final Function(Comment) onReply;
+  final String postId;
 
-  const _CommentTree({required this.comment, required this.onReply});
+  const _CommentTree({
+    required this.comment,
+    required this.onReply,
+    required this.postId,
+  });
 
   @override
   State<_CommentTree> createState() => _CommentTreeState();
@@ -440,73 +452,98 @@ class _CommentTreeState extends State<_CommentTree> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Wrap(
-        children: [
-          // Opsi Lihat Profil
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text("Lihat Profil"),
-            onTap: () {
-              Navigator.pop(ctx);
-              _navigateToProfile(comment.user);
-            },
-          ),
-
-          if (isMyComment)
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                "Hapus Komentar",
-                style: TextStyle(color: Colors.red),
-              ),
+              leading: const Icon(Icons.person_outline),
+              title: const Text("Lihat Profil"),
               onTap: () {
                 Navigator.pop(ctx);
+                _navigateToProfile(comment.user);
               },
             ),
+            if (isMyComment)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  "Hapus Komentar",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final postProvider = context.read<PostProvider>();
+                  final commentProvider = context.read<CommentProvider>();
 
-          if (!isMyComment)
-            ListTile(
-              leading: const Icon(
-                Icons.report_gmailerrorred_outlined,
-                color: Colors.red,
-              ),
-              title: const Text(
-                "Laporkan Komentar",
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () async {
-                Navigator.pop(ctx);
-
-                final reason = await showReportReasonDialog(context);
-
-                if (reason != null && reason.isNotEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Mengirim laporan...")),
-                  );
-
-                  final result = await reportService.submitReport(
-                    targetType: 'comment',
-                    targetId: comment.id,
-                    reason: reason,
+                  final success = await commentProvider.deleteComment(
+                    comment.id,
+                    widget.postId,
                   );
 
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result['message']),
-                        backgroundColor: result['success']
-                            ? Colors.green
-                            : Colors.red,
-                      ),
-                    );
+                    if (success) {
+                      postProvider.decrementCommentCount(widget.postId);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Komentar berhasil dihapus"),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Gagal menghapus komentar"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
-                }
-              },
-            ),
-        ],
+                },
+              ),
+            if (!isMyComment)
+              ListTile(
+                leading: const Icon(
+                  Icons.report_gmailerrorred_outlined,
+                  color: Colors.red,
+                ),
+                title: const Text(
+                  "Laporkan Komentar",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+
+                  final reason = await showReportReasonDialog(context);
+
+                  if (reason != null && reason.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Mengirim laporan...")),
+                    );
+
+                    final result = await reportService.submitReport(
+                      targetType: 'comment',
+                      targetId: comment.id,
+                      reason: reason,
+                    );
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result['message']),
+                          backgroundColor: result['success']
+                              ? Colors.green
+                              : Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -607,12 +644,22 @@ class _CommentTreeState extends State<_CommentTree> {
                       children: [
                         GestureDetector(
                           onTap: () => _navigateToProfile(comment.user),
-                          child: Text(
-                            comment.user.displayName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  comment.user.displayName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (comment.user.isVerified)
+                                const VerifiedBadge(size: 14),
+                            ],
                           ),
                         ),
                         Text(
@@ -625,7 +672,6 @@ class _CommentTreeState extends State<_CommentTree> {
                       ],
                     ),
                     const SizedBox(height: 2),
-
                     if (contextComment != null)
                       GestureDetector(
                         onTap: () => _showContext(contextComment!),
@@ -639,16 +685,22 @@ class _CommentTreeState extends State<_CommentTree> {
                             color: theme.colorScheme.surfaceContainerHigh,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            "Membalas ${contextComment.user.displayName}",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Membalas ${contextComment.user.displayName}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              if (contextComment.user.isVerified)
+                                const VerifiedBadge(size: 12),
+                            ],
                           ),
                         ),
                       ),
-
                     Text(
                       commentText,
                       style: TextStyle(
@@ -699,7 +751,6 @@ class _CommentTreeState extends State<_CommentTree> {
               child: _buildCommentTile(reply, theme, isReply: true),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.only(left: 60.0, bottom: 8.0, top: 4.0),
             child: Row(
@@ -723,7 +774,6 @@ class _CommentTreeState extends State<_CommentTree> {
                     ),
                   ),
                 ],
-
                 if (_visibleRepliesCount > 1) ...[
                   const SizedBox(width: 16),
                   InkWell(
@@ -742,7 +792,6 @@ class _CommentTreeState extends State<_CommentTree> {
             ),
           ),
         ],
-
         Divider(
           height: 1,
           indent: 64,

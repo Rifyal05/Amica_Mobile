@@ -1,6 +1,7 @@
 import 'package:amica/mainpage/create_post_page.dart';
 import 'package:amica/mainpage/edit_profile_page.dart';
 import 'package:amica/mainpage/user_posts_page.dart';
+import 'package:amica/mainpage/user_list_page.dart';
 import 'package:amica/mainpage/widgets/post_card.dart';
 import 'package:amica/models/user_model.dart';
 import 'package:amica/models/user_profile_model.dart';
@@ -9,26 +10,35 @@ import 'package:amica/provider/profile_provider.dart';
 import 'package:amica/mainpage/settings_page.dart';
 import 'package:amica/services/chat_service.dart';
 import 'package:amica/mainpage/chat_page.dart';
+import 'package:amica/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../services/report_serices.dart';
+import '../services/custom_cache_manager.dart';
+import 'widgets/verified_badge.dart';
+import '../provider/navigation_provider.dart';
+import 'professional_info_page.dart';
 
 class UserProfilePage extends StatelessWidget {
   final User? user;
+  final String? userId;
 
-  const UserProfilePage({super.key, this.user});
+  const UserProfilePage({super.key, this.user, this.userId});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => ProfileProvider(),
-      child: _UserProfileContent(user: user),
+      child: _UserProfileContent(user: user, userId: userId),
     );
   }
 }
 
 class _UserProfileContent extends StatefulWidget {
   final User? user;
-  const _UserProfileContent({this.user});
+  final String? userId;
+  const _UserProfileContent({this.user, this.userId});
 
   @override
   State<_UserProfileContent> createState() => _UserProfileContentState();
@@ -39,6 +49,10 @@ class _UserProfileContentState extends State<_UserProfileContent>
   late final TabController _tabController;
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
+  final UserService _userService = UserService();
+  final ReportService _reportService = ReportService();
+
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -48,6 +62,38 @@ class _UserProfileContentState extends State<_UserProfileContent>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
+
+    final navProv = Provider.of<NavigationProvider>(context, listen: false);
+    navProv.addListener(_handleScrollToTop);
+  }
+
+  @override
+  void dispose() {
+    try {
+      final navProvider = Provider.of<NavigationProvider>(
+        context,
+        listen: false,
+      );
+      navProvider.removeListener(_handleScrollToTop);
+    } catch (e) {}
+    _tabController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleScrollToTop() {
+    if (!mounted) return;
+    final navProv = Provider.of<NavigationProvider>(context, listen: false);
+    if (navProv.selectedIndex == 3 && navProv.scrollToTopTime != null) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+        _onRefresh();
+      }
+    }
   }
 
   void _loadData() {
@@ -55,7 +101,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
     final profileProvider = context.read<ProfileProvider>();
 
     final String currentUserId = authProvider.currentUser?.id ?? '';
-    final String targetId = widget.user?.id ?? currentUserId;
+    final String targetId = widget.userId ?? widget.user?.id ?? currentUserId;
 
     if (targetId.isNotEmpty) {
       profileProvider.loadFullProfile(targetId, currentUserId: currentUserId);
@@ -92,18 +138,18 @@ class _UserProfileContentState extends State<_UserProfileContent>
     }
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
   Future<void> _onRefresh() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+
     final authProvider = context.read<AuthProvider>();
     final currentUserId = authProvider.currentUser?.id ?? '';
+
     await context.read<ProfileProvider>().refreshProfile(
       currentUserId: currentUserId,
     );
+
+    if (mounted) setState(() => _isRefreshing = false);
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
@@ -124,6 +170,103 @@ class _UserProfileContentState extends State<_UserProfileContent>
     );
   }
 
+  Future<void> _confirmBlockUser() async {
+    final authProvider = context.read<AuthProvider>();
+    final currentUserId = authProvider.currentUser?.id ?? '';
+    final targetId = widget.userId ?? widget.user?.id ?? currentUserId;
+
+    if (targetId == currentUserId) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Blokir Pengguna?"),
+        content: const Text(
+          "Mereka tidak akan bisa melihat postinganmu atau mengirim pesan.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Blokir"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await _userService.blockUser(targetId);
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Pengguna berhasil diblokir")),
+          );
+          Navigator.of(context).pop();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Gagal memblokir pengguna")),
+          );
+        }
+      }
+    }
+  }
+
+  void _showReportDialog() {
+    final TextEditingController reasonCtrl = TextEditingController();
+    final authProvider = context.read<AuthProvider>();
+    final currentUserId = authProvider.currentUser?.id ?? '';
+    final targetId = widget.userId ?? widget.user?.id ?? currentUserId;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Laporkan Pengguna"),
+        content: TextField(
+          controller: reasonCtrl,
+          decoration: const InputDecoration(
+            hintText: "Jelaskan alasan laporan...",
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (reasonCtrl.text.trim().isEmpty) return;
+              Navigator.pop(context);
+
+              final result = await _reportService.submitReport(
+                targetType: 'user',
+                targetId: targetId,
+                reason: reasonCtrl.text,
+              );
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(result['message']),
+                    backgroundColor: result['success']
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text("Kirim"),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showUserMenu() {
     showModalBottomSheet(
       context: context,
@@ -135,10 +278,18 @@ class _UserProfileContentState extends State<_UserProfileContent>
           ListTile(
             leading: const Icon(Icons.flag),
             title: const Text("Laporkan"),
+            onTap: () {
+              Navigator.pop(context);
+              _showReportDialog();
+            },
           ),
           ListTile(
             leading: const Icon(Icons.block, color: Colors.red),
             title: const Text("Blokir", style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              _confirmBlockUser();
+            },
           ),
         ],
       ),
@@ -151,37 +302,36 @@ class _UserProfileContentState extends State<_UserProfileContent>
     double? width,
     double? height,
   }) {
-    return Image.network(
-      url,
+    final colorScheme = Theme.of(context).colorScheme;
+    final placeholderColor = colorScheme.surfaceContainerHighest;
+
+    return CachedNetworkImage(
+      imageUrl: url,
       fit: fit,
       width: width,
       height: height,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          width: width,
-          height: height,
-          color: Colors.grey.shade200,
-          child: Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                    : null,
-              ),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (ctx, err, stack) => Container(
+      // Tambahkan cache manager untuk gambar post/grid
+      cacheManager: PostCacheManager.instance,
+      placeholder: (context, url) => Container(
         width: width,
         height: height,
-        color: Colors.grey.shade300,
-        child: const Icon(Icons.broken_image, color: Colors.grey),
+        color: placeholderColor,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+      errorWidget: (ctx, url, err) => Container(
+        width: width,
+        height: height,
+        color: placeholderColor,
+        child: Icon(Icons.broken_image, color: colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -193,9 +343,9 @@ class _UserProfileContentState extends State<_UserProfileContent>
     final provider = context.watch<ProfileProvider>();
     final profile = provider.userProfile;
     final bool canGoBack = Navigator.of(context).canPop();
-    final bool isMe = profile?.status.isMe ?? false;
+    final bool isInitialLoading = provider.isLoadingProfile && profile == null;
 
-    if (provider.isLoadingProfile) {
+    if (isInitialLoading) {
       return Scaffold(
         backgroundColor: colorScheme.surface,
         appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
@@ -222,6 +372,8 @@ class _UserProfileContentState extends State<_UserProfileContent>
         ),
       );
     }
+
+    final bool isMe = profile.status.isMe;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -272,7 +424,6 @@ class _UserProfileContentState extends State<_UserProfileContent>
               ),
             ),
           ),
-
           Positioned(
             bottom: 16,
             left: 0,
@@ -327,9 +478,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
                           ),
                         ),
                       ),
-
                     if (canGoBack && !isMe) const SizedBox(width: 8),
-
                     GestureDetector(
                       onTap: _scrollToTop,
                       child: Container(
@@ -414,6 +563,10 @@ class _UserProfileContentState extends State<_UserProfileContent>
   }
 
   Widget _buildTextListTab(ProfileProvider provider) {
+    if (provider.textPosts.isEmpty && provider.isLoadingProfile) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (provider.textPosts.isEmpty) {
       return _buildEmptyState(
         "Belum ada postingan teks.",
@@ -493,7 +646,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
                   ),
                   Switch(
                     value: provider.myPrivacySetting,
-                    activeColor: colorScheme.primary,
+                    activeThumbColor: colorScheme.primary,
                     onChanged: (val) async {
                       bool success = await provider.togglePrivacySetting(val);
                       if (!success && context.mounted) {
@@ -514,7 +667,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
               ),
             ),
           ),
-          if (provider.isLoadingSaved)
+          if (provider.isLoadingSaved && provider.savedPosts.isEmpty)
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             )
@@ -562,7 +715,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
           ],
         );
       }
-      if (provider.isLoadingSaved) {
+      if (provider.isLoadingSaved && provider.savedPosts.isEmpty) {
         return const Center(child: CircularProgressIndicator());
       } else if (provider.savedPosts.isEmpty) {
         return const Center(child: Text("Belum ada postingan tersimpan."));
@@ -662,27 +815,47 @@ class _UserProfileContentState extends State<_UserProfileContent>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: colorScheme.surface, width: 4),
-                  color: Colors.grey.shade200,
+                  color: colorScheme.surfaceContainerHighest,
                 ),
                 child: ClipOval(
                   child: profile.fullAvatarUrl != null
-                      ? _buildNetworkImage(
-                          profile.fullAvatarUrl!,
+                      ? CachedNetworkImage(
+                          imageUrl: profile.fullAvatarUrl!,
+                          // Tambahkan cache manager untuk Avatar/Profil
+                          cacheManager: ProfileCacheManager.instance,
                           width: 100,
                           height: 100,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                              const CircularProgressIndicator(strokeWidth: 2),
+                          errorWidget: (context, url, error) => Icon(
+                            Icons.person,
+                            size: 50,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         )
-                      : const Icon(Icons.person, size: 50, color: Colors.grey),
+                      : Icon(
+                          Icons.person,
+                          size: 50,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                 ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 60),
-        Text(
-          profile.displayName,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              profile.displayName,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (profile.isVerified) const VerifiedBadge(size: 22),
+          ],
         ),
         Text(
           '@${profile.username}',
@@ -690,6 +863,55 @@ class _UserProfileContentState extends State<_UserProfileContent>
             color: colorScheme.onSurfaceVariant,
           ),
         ),
+        if (profile.isVerified)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProfessionalInfoPage(profile: profile),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: colorScheme.primary.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const VerifiedBadge(size: 14, padding: EdgeInsets.zero),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Psikolog Terverifikasi",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.info_outline,
+                      size: 12,
+                      color: colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         const SizedBox(height: 16),
         if (profile.bio != null)
           Padding(
@@ -706,16 +928,41 @@ class _UserProfileContentState extends State<_UserProfileContent>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatColumn(context, '${profile.stats.posts}', 'Postingan'),
+              _buildStatColumn(
+                context,
+                '${profile.stats.posts}',
+                'Postingan',
+                null,
+              ),
               _buildStatColumn(
                 context,
                 '${profile.stats.followers}',
                 'Pengikut',
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserConnectionsPage(
+                      userId: profile.id,
+                      username: profile.username,
+                      initialIndex: 0,
+                    ),
+                  ),
+                ),
               ),
               _buildStatColumn(
                 context,
                 '${profile.stats.following}',
                 'Mengikuti',
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserConnectionsPage(
+                      userId: profile.id,
+                      username: profile.username,
+                      initialIndex: 1,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -788,23 +1035,31 @@ class _UserProfileContentState extends State<_UserProfileContent>
     );
   }
 
-  Widget _buildStatColumn(BuildContext context, String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+  Widget _buildStatColumn(
+    BuildContext context,
+    String value,
+    String label,
+    VoidCallback? onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -823,5 +1078,6 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) => Container(color: Theme.of(context).colorScheme.surface, child: _tabBar);
   @override
-  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) => false;
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) =>
+      oldDelegate._tabBar.indicatorColor != _tabBar.indicatorColor;
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../models/post_model.dart';
 
 Future<String?> showReportReasonDialog(BuildContext context) async {
   final TextEditingController reasonController = TextEditingController();
@@ -27,4 +28,48 @@ Future<String?> showReportReasonDialog(BuildContext context) async {
       ],
     ),
   );
+}
+
+
+enum DiscoverBlockType { duoSquare, landscape, tetris }
+
+class DiscoverMosaicBlock {
+  final DiscoverBlockType type;
+  final List<Post> posts;
+  DiscoverMosaicBlock({required this.type, required this.posts});
+}
+
+class DiscoverHelper {
+  static List<DiscoverMosaicBlock> generateBlocks(List<Post> rawPosts) {
+    List<DiscoverMosaicBlock> blocks = [];
+    List<Post> pool = List.from(rawPosts);
+
+    while (pool.isNotEmpty) {
+      if (pool.length >= 3) {
+        Post p1 = pool[0];
+        if (p1.fullImageUrl != null) {
+          blocks.add(DiscoverMosaicBlock(
+            type: DiscoverBlockType.landscape,
+            posts: [pool.removeAt(0)],
+          ));
+        } else {
+          blocks.add(DiscoverMosaicBlock(
+            type: DiscoverBlockType.tetris,
+            posts: [pool.removeAt(0), pool.removeAt(0), pool.removeAt(0)],
+          ));
+        }
+      } else if (pool.length == 2) {
+        blocks.add(DiscoverMosaicBlock(
+          type: DiscoverBlockType.duoSquare,
+          posts: [pool.removeAt(0), pool.removeAt(0)],
+        ));
+      } else {
+        blocks.add(DiscoverMosaicBlock(
+          type: DiscoverBlockType.duoSquare,
+          posts: [pool.removeAt(0)],
+        ));
+      }
+    }
+    return blocks;
+  }
 }

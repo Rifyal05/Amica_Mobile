@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/user_profile_model.dart';
 import '../services/user_service.dart';
 import '../provider/profile_provider.dart';
@@ -19,9 +20,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _usernameCtrl;
   late TextEditingController _bioCtrl;
 
+  late TextEditingController _proAddressCtrl;
+  late TextEditingController _proScheduleCtrl;
+  late TextEditingController _proProvinceCtrl;
+
+  String? _fixedProName;
+  String? _fixedStrNumber;
+
   File? _newAvatar;
   File? _newBanner;
   bool _isLoading = false;
+
+  bool get _isProfessional => widget.profile.isVerified == true;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -31,6 +41,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _nameCtrl = TextEditingController(text: widget.profile.displayName);
     _usernameCtrl = TextEditingController(text: widget.profile.username);
     _bioCtrl = TextEditingController(text: widget.profile.bio ?? "");
+
+    if (_isProfessional) {
+      _proAddressCtrl = TextEditingController(
+        text: widget.profile.practiceAddress ?? "",
+      );
+      _proScheduleCtrl = TextEditingController(
+        text: widget.profile.practiceSchedule ?? "",
+      );
+      _proProvinceCtrl = TextEditingController(
+        text: widget.profile.province ?? "",
+      );
+
+      _fixedProName = widget.profile.fullNameWithTitle;
+      _fixedStrNumber = widget.profile.strNumber;
+    } else {
+      _proAddressCtrl = TextEditingController();
+      _proScheduleCtrl = TextEditingController();
+      _proProvinceCtrl = TextEditingController();
+    }
   }
 
   @override
@@ -38,6 +67,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _nameCtrl.dispose();
     _usernameCtrl.dispose();
     _bioCtrl.dispose();
+    _proAddressCtrl.dispose();
+    _proScheduleCtrl.dispose();
+    _proProvinceCtrl.dispose();
     super.dispose();
   }
 
@@ -46,10 +78,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         setState(() {
-          if (isAvatar)
+          if (isAvatar) {
             _newAvatar = File(image.path);
-          else
+          } else {
             _newBanner = File(image.path);
+          }
         });
       }
     } catch (e) {
@@ -77,6 +110,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       bio: _bioCtrl.text,
       avatarFile: _newAvatar,
       bannerFile: _newBanner,
+      isProfessional: _isProfessional,
+      practiceAddress: _isProfessional ? _proAddressCtrl.text : null,
+      practiceSchedule: _isProfessional ? _proScheduleCtrl.text : null,
+      province: _isProfessional ? _proProvinceCtrl.text : null,
     );
 
     setState(() => _isLoading = false);
@@ -85,7 +122,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       if (mounted) {
         _showSnackbar("Profil berhasil diperbarui!", isError: false);
         context.read<ProfileProvider>().loadFullProfile(widget.profile.id);
-
         Navigator.pop(context);
       }
     } else {
@@ -96,6 +132,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -137,26 +174,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           )
                         : (widget.profile.fullBannerUrl != null
                               ? DecorationImage(
-                                  image: NetworkImage(
+                                  image: CachedNetworkImageProvider(
                                     widget.profile.fullBannerUrl!,
                                   ),
                                   fit: BoxFit.cover,
                                 )
                               : null),
                   ),
-                  child: Center(
+                  child: const Center(
                     child: CircleAvatar(
                       backgroundColor: Colors.black45,
-                      child: const Icon(Icons.camera_alt, color: Colors.white),
+                      child: Icon(Icons.camera_alt, color: Colors.white),
                     ),
                   ),
                 ),
               ),
-              // Avatar
               Positioned(
                 bottom: -40,
                 child: InkWell(
-                  onTap: () => _pickImage(true), // Pick Avatar
+                  onTap: () => _pickImage(true),
                   child: Stack(
                     alignment: Alignment.bottomRight,
                     children: [
@@ -169,11 +205,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           backgroundImage: _newAvatar != null
                               ? FileImage(_newAvatar!)
                               : (widget.profile.fullAvatarUrl != null
-                                    ? NetworkImage(
+                                        ? CachedNetworkImageProvider(
                                             widget.profile.fullAvatarUrl!,
                                           )
-                                          as ImageProvider
-                                    : null),
+                                        : null)
+                                    as ImageProvider?,
                           child:
                               _newAvatar == null &&
                                   widget.profile.fullAvatarUrl == null
@@ -199,7 +235,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
           const SizedBox(height: 60),
 
-          // Form Fields
+          Text(
+            "Informasi Umum",
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: _nameCtrl,
             decoration: const InputDecoration(
@@ -228,6 +270,89 @@ class _EditProfilePageState extends State<EditProfilePage> {
             maxLines: 3,
             maxLength: 150,
           ),
+
+          if (_isProfessional) ...[
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.verified, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  "Informasi Profesional",
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                "Nama resmi dan nomor STRPK tidak dapat diubah untuk menjaga validitas verifikasi.",
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: TextEditingController(text: _fixedProName),
+              enabled: false,
+              decoration: const InputDecoration(
+                labelText: "Nama Resmi (Sesuai KTP/STR)",
+                border: OutlineInputBorder(),
+                filled: true,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: TextEditingController(text: _fixedStrNumber),
+              enabled: false,
+              decoration: const InputDecoration(
+                labelText: "Nomor STRPK",
+                border: OutlineInputBorder(),
+                filled: true,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            TextField(
+              controller: _proProvinceCtrl,
+              decoration: const InputDecoration(
+                labelText: "Wilayah / Provinsi",
+                prefixIcon: Icon(Icons.map_outlined),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _proAddressCtrl,
+              decoration: const InputDecoration(
+                labelText: "Alamat Praktik",
+                prefixIcon: Icon(Icons.location_on_outlined),
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _proScheduleCtrl,
+              decoration: const InputDecoration(
+                labelText: "Jadwal Praktik",
+                prefixIcon: Icon(Icons.calendar_today_outlined),
+                border: OutlineInputBorder(),
+                hintText: "Contoh: Senin - Jumat, 09:00 - 15:00",
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
         ],
       ),
     );

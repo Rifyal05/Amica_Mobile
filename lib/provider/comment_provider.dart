@@ -65,4 +65,26 @@ class CommentProvider with ChangeNotifier {
   }) async {
     return await _service.createComment(postId, text, parentId: parentId);
   }
+
+  Future<bool> deleteComment(String commentId, String postId) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final success = await _service.deleteComment(commentId);
+      if (success) {
+        _comments.removeWhere((c) => c.id == commentId);
+        for (var rootComment in _comments) {
+          rootComment.replies.removeWhere((r) => r.id == commentId);
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error deleting comment: $e");
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

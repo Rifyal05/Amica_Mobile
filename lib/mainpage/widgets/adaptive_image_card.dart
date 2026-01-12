@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class AdaptiveImageCard extends StatefulWidget {
   final String imageUrl;
@@ -9,8 +10,6 @@ class AdaptiveImageCard extends StatefulWidget {
 }
 
 class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
-  ImageStream? _imageStream;
-  ImageInfo? _imageInfo;
   double? _aspectRatio;
 
   @override
@@ -20,26 +19,22 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
   }
 
   void _fetchImageInfo() {
-    final image = NetworkImage(widget.imageUrl);
-    _imageStream = image.resolve(const ImageConfiguration());
-    final listener = ImageStreamListener((
-      ImageInfo info,
-      bool synchronousCall,
-    ) {
-      if (mounted) {
-        setState(() {
-          _imageInfo = info;
-          _aspectRatio = _imageInfo!.image.width / _imageInfo!.image.height;
-        });
-      }
-    });
-    _imageStream!.addListener(listener);
-  }
+    final image = CachedNetworkImageProvider(
+      widget.imageUrl,
+      cacheKey: widget.imageUrl,
+    );
 
-  @override
-  void dispose() {
-    _imageStream?.removeListener(ImageStreamListener((_, __) {}));
-    super.dispose();
+    image
+        .resolve(const ImageConfiguration())
+        .addListener(
+          ImageStreamListener((ImageInfo info, bool synchronousCall) {
+            if (mounted) {
+              setState(() {
+                _aspectRatio = info.image.width / info.image.height;
+              });
+            }
+          }),
+        );
   }
 
   @override
@@ -55,7 +50,13 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
             color: theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12.0),
           ),
-          child: const Center(child: CircularProgressIndicator()),
+          child: const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
         ),
       );
     }
@@ -73,7 +74,17 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
             color: theme.brightness == Brightness.dark
                 ? Colors.black
                 : theme.colorScheme.surfaceContainer,
-            child: Image.network(widget.imageUrl, fit: BoxFit.contain),
+            child: CachedNetworkImage(
+              imageUrl: widget.imageUrl,
+              cacheKey: widget.imageUrl,
+              fit: BoxFit.contain,
+              fadeInDuration: const Duration(milliseconds: 200),
+              placeholder: (context, url) => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              errorWidget: (context, url, error) =>
+                  const Icon(Icons.broken_image),
+            ),
           ),
         ),
       );
@@ -83,7 +94,16 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
         child: SizedBox(
           height: maxImageHeight,
           width: double.infinity,
-          child: Image.network(widget.imageUrl, fit: BoxFit.cover),
+          child: CachedNetworkImage(
+            imageUrl: widget.imageUrl,
+            cacheKey: widget.imageUrl,
+            fit: BoxFit.cover,
+            fadeInDuration: const Duration(milliseconds: 200),
+            placeholder: (context, url) =>
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            errorWidget: (context, url, error) =>
+                const Icon(Icons.broken_image),
+          ),
         ),
       );
     }

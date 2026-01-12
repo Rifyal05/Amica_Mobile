@@ -6,7 +6,7 @@ class SdResultDetailPage extends StatelessWidget {
   const SdResultDetailPage({super.key, required this.result});
 
   Color _getLevelColor(String level) {
-    switch (level) {
+    switch (level.toLowerCase()) {
       case 'normal':
       case 'info':
         return Colors.green;
@@ -22,11 +22,14 @@ class SdResultDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final overallSummary =
-        result.interpretation['overall_summary'] as Map<String, dynamic>;
-    final totalLevel = result.interpretation['total_level'] as String;
-    final breakdown =
-        result.interpretation['detailed_breakdown'] as List<dynamic>;
+
+    final interpretation = result.interpretation;
+    final overallSummary = Map<String, dynamic>.from(
+      interpretation['overall_summary'] ?? {},
+    );
+    final totalLevel = (interpretation['total_level'] ?? 'info').toString();
+    final breakdown = interpretation['detailed_breakdown'] as List? ?? [];
+    final totalScore = interpretation['total_score'] ?? 0;
 
     final totalColor = _getLevelColor(totalLevel);
 
@@ -40,7 +43,7 @@ class SdResultDetailPage extends StatelessWidget {
             Icon(Icons.analytics_outlined, size: 80, color: totalColor),
             const SizedBox(height: 24),
             Text(
-              "SKOR KESULITAN TOTAL: ${result.interpretation['total_score']}",
+              "SKOR KESULITAN TOTAL: $totalScore",
               textAlign: TextAlign.center,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
@@ -49,23 +52,23 @@ class SdResultDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              overallSummary['title'],
+              overallSummary['title'] ?? 'Hasil Evaluasi',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
             Text(
-              overallSummary['description'],
+              overallSummary['description'] ?? 'Tidak ada deskripsi tersedia.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge,
             ),
-
             const SizedBox(height: 32),
-
-            _buildSuggestionBox(context, overallSummary['advice']),
-
+            _buildSuggestionBox(
+              context,
+              overallSummary['advice'] ??
+                  'Ikuti saran dari tenaga profesional jika diperlukan.',
+            ),
             const SizedBox(height: 32),
-
             Text(
               'Rincian Berdasarkan Skala',
               style: theme.textTheme.titleLarge?.copyWith(
@@ -73,20 +76,19 @@ class SdResultDetailPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
             ...breakdown.map((item) {
-              final itemLevel = item['level'] as String;
+              final data = Map<String, dynamic>.from(item);
+              final itemLevel = (data['level'] ?? 'info').toString();
               final itemColor = _getLevelColor(itemLevel);
 
               return _buildScaleTile(
                 context,
-                title: item['title'],
-                score: item['score'],
-                description: item['description'],
+                title: data['title'] ?? 'Skala',
+                score: data['score'] ?? 0,
+                description: data['description'] ?? '',
                 color: itemColor,
               );
-            }).toList(),
-
+            }),
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),

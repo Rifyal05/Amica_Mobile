@@ -33,6 +33,14 @@ dependencies:
   socket_io_client:
   timeago:
   flutter_markdown_plus:
+  app_links:
+  share_plus:
+  path_provider:
+  flutter_staggered_grid_view:
+  shimmer:
+  flutter_launcher_icons:
+  flutter_cache_manager:
+
 
 dev_dependencies:
   flutter_test:
@@ -67,3 +75,13 @@ flutter:
   #       - asset: fonts/TrajanPro.ttf
   #       - asset: fonts/TrajanPro_Bold.ttf
   #         weight: 700
+
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+
+  image_path: "source/images/icon_app_with_background.png"
+
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "source/images/icon_app_no_background.png"

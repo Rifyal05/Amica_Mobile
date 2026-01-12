@@ -29,7 +29,7 @@ class SdqProvider with ChangeNotifier {
     notifyListeners();
     try {
       final result = await _service.submitAnswers(answers);
-      await fetchHistory(); // Refresh history setelah submit
+      await fetchHistory();
       return result;
     } catch (e) {
       debugPrint(e.toString());
@@ -41,17 +41,12 @@ class SdqProvider with ChangeNotifier {
   }
 
   Future<SdqFullResult?> fetchResultDetail(int id) async {
-    _isLoading = true;
-    notifyListeners(); // Tampilkan loading
     try {
       final result = await _service.getResultDetail(id);
       return result;
     } catch (e) {
       debugPrint(e.toString());
       return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
   }
 }

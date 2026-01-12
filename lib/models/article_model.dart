@@ -13,6 +13,7 @@ class Article {
   final bool isFeatured;
   final String createdAt;
   final String author;
+  final int views;
 
   const Article({
     required this.id,
@@ -27,6 +28,7 @@ class Article {
     this.isFeatured = false,
     required this.createdAt,
     required this.author,
+    this.views = 0,
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
@@ -44,13 +46,21 @@ class Article {
 
     String rawImg = json['image_url'] ?? '';
     String finalImgUrl;
-
     if (rawImg.startsWith('http')) {
       finalImgUrl = rawImg;
     } else if (rawImg.isNotEmpty) {
-      finalImgUrl = "${ApiConfig.baseUrl}/static/uploads/articles/$rawImg";
+      finalImgUrl = ApiConfig.getFullUrl(rawImg) ?? '';
     } else {
       finalImgUrl = 'https://via.placeholder.com/400x200?text=No+Image';
+    }
+
+    String authorName = 'Admin';
+    if (json['author'] != null) {
+      if (json['author'] is Map) {
+        authorName = json['author']['username'] ?? 'Admin';
+      } else if (json['author'] is String) {
+        authorName = json['author'];
+      }
     }
 
     int estimatedReadTime =
@@ -69,7 +79,8 @@ class Article {
       sourceUrl: json['source_url'] ?? '',
       isFeatured: json['is_featured'] == true,
       createdAt: json['created_at'] ?? '',
-      author: json['author'] ?? 'Admin',
+      author: authorName,
+      views: json['views'] ?? 0,
     );
   }
 }

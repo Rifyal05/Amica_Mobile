@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import '../../provider/post_provider.dart';
+import 'post_upload_status_page.dart';
 
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
@@ -53,13 +52,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
       return;
     }
 
-    Navigator.of(context).pop();
-
-    final provider = context.read<PostProvider>();
-    await provider.createPost(
-      caption: caption,
-      tags: _tags,
-      imageFile: _imageFile,
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PostUploadStatusPage(
+          caption: caption,
+          tags: _tags,
+          imageFile: _imageFile,
+        ),
+      ),
     );
   }
 
@@ -113,7 +114,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   if (_imageFile != null)
                     Stack(
                       children: [
@@ -139,9 +139,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         ),
                       ],
                     ),
-
                   const SizedBox(height: 16),
-
                   if (_tags.isNotEmpty)
                     Wrap(
                       spacing: 8,
@@ -162,7 +160,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
               ),
             ),
           ),
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(

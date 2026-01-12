@@ -1,13 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../models/chat_model.dart';
 import '../models/messages_model.dart';
+import '../models/user_model.dart';
 import '../services/api_config.dart';
 import '../services/authenticated_client.dart';
+import '../services/chat_service.dart';
 
 class ChatProvider with ChangeNotifier {
   final AuthenticatedClient _client = AuthenticatedClient();
+  final ChatService _service = ChatService();
   IO.Socket? socket;
 
   List<ChatRoom> _inbox = [];
@@ -19,6 +23,10 @@ class ChatProvider with ChangeNotifier {
 
   List<ChatRoom> get inbox => _inbox;
   bool get isLoading => _isLoading;
+
+  int get unreadMessageCount {
+    return _inbox.fold(0, (sum, chat) => sum + chat.unreadCount);
+  }
 
   List<ChatMessage> getMessages(String chatId) {
     return _messagesCache[chatId] ?? [];
@@ -54,6 +62,8 @@ class ChatProvider with ChangeNotifier {
           lastMessage: old.lastMessage,
           lastMessageTime: old.lastMessageTime,
           unreadCount: 0,
+          targetUserId: old.targetUserId,
+          targetUsername: old.targetUsername,
         );
         notifyListeners();
       }
@@ -97,6 +107,57 @@ class ChatProvider with ChangeNotifier {
     } catch (e) {
       debugPrint(e.toString());
     }
+  }
+
+  Future<String?> createGroup(
+    String name,
+    File? image,
+    List<User> members,
+    bool allowInvites,
+  ) async {
+    try {
+      List<String> memberIds = members.map((u) => u.id).toList();
+      final res = await _service.createGroup(
+        name,
+        image,
+        memberIds,
+        allowInvites,
+      );
+      if (res['success'] == true) {
+        fetchInbox();
+        return res['chat_id'];
+      }
+    } catch (e) {
+      return null;
+    }
+    return null;
+  }
+
+  Future<void> leaveGroup(String chatId) async {
+    await _service.leaveGroup(chatId);
+    _inbox.removeWhere((c) => c.id == chatId);
+    notifyListeners();
+  }
+
+  Future<void> clearChat(String chatId) async {
+    await _service.clearChat(chatId);
+    _messagesCache[chatId] = [];
+    notifyListeners();
+  }
+
+  Future<void> deleteMessage(String chatId, String msgId) async {
+    final msgs = _messagesCache[chatId];
+    if (msgs != null) {
+      final idx = msgs.indexWhere((m) => m.id == msgId);
+      if (idx != -1) {
+        msgs[idx] = msgs[idx].copyWith(
+          isDeleted: true,
+          text: "🚫 Pesan ini telah dihapus",
+        );
+        notifyListeners();
+      }
+    }
+    await _service.deleteMessage(msgId);
   }
 
   void connectSocket(String token, String myUserId) {
@@ -147,21 +208,45 @@ class ChatProvider with ChangeNotifier {
       notifyListeners();
     });
 
+    socket!.on('message_deleted', (data) {
+      String chatId = data['chat_id'];
+      String msgId = data['msg_id'];
+      final list = _messagesCache[chatId];
+      if (list != null) {
+        final idx = list.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          list[idx] = list[idx].copyWith(
+            isDeleted: true,
+            text: "🚫 Pesan ini telah dihapus",
+          );
+        }
+      }
+
+      int inboxIdx = _inbox.indexWhere((c) => c.id == chatId);
+      if (inboxIdx != -1) {
+        var chat = _inbox[inboxIdx];
+        _inbox[inboxIdx] = ChatRoom(
+          id: chat.id,
+          name: chat.name,
+          imageUrl: chat.imageUrl,
+          isGroup: chat.isGroup,
+          lastMessage: "🚫 Pesan ini telah dihapus",
+          lastMessageTime: chat.lastMessageTime,
+          unreadCount: chat.unreadCount,
+          targetUserId: chat.targetUserId,
+          targetUsername: chat.targetUsername,
+        );
+      }
+      notifyListeners();
+    });
+
     socket!.on('messages_read', (data) {
       String chatId = data['chat_id'];
       if (_messagesCache.containsKey(chatId)) {
         final messages = _messagesCache[chatId]!;
         _messagesCache[chatId] = messages.map((msg) {
-          if (!msg.isRead) {
-            return ChatMessage(
-              id: msg.id,
-              chatId: msg.chatId,
-              senderId: msg.senderId,
-              text: msg.text,
-              type: msg.type,
-              sentAt: msg.sentAt,
-              isRead: true,
-            );
+          if (!msg.isRead && msg.senderId == _myUserId) {
+            return msg.copyWith(isRead: true);
           }
           return msg;
         }).toList();
@@ -186,13 +271,16 @@ class ChatProvider with ChangeNotifier {
 
   void _updateInboxLocal(ChatMessage msg) {
     int index = _inbox.indexWhere((c) => c.id == msg.chatId);
-    int newUnreadCount = 0;
+    String senderDisplayName = "";
+    if (msg.senderId == _myUserId) {
+      senderDisplayName = "Anda";
+    } else {
+      senderDisplayName = msg.senderName ?? "";
+    }
 
     if (index != -1) {
       var oldChat = _inbox[index];
-      newUnreadCount = (msg.senderId == _myUserId)
-          ? 0
-          : oldChat.unreadCount + 1;
+      int newUnread = (msg.senderId == _myUserId) ? 0 : oldChat.unreadCount + 1;
 
       _inbox.removeAt(index);
       _inbox.insert(
@@ -202,13 +290,26 @@ class ChatProvider with ChangeNotifier {
           name: oldChat.name,
           imageUrl: oldChat.imageUrl,
           isGroup: oldChat.isGroup,
-          lastMessage: msg.text,
+          lastMessage: msg.isDeleted ? "🚫 Pesan ini telah dihapus" : msg.text,
+          lastSenderName: senderDisplayName,
           lastMessageTime: msg.sentAt,
-          unreadCount: newUnreadCount,
+          unreadCount: newUnread,
+          targetUserId: oldChat.targetUserId,
+          targetUsername: oldChat.targetUsername,
         ),
       );
+      notifyListeners();
     } else {
       fetchInbox();
+    }
+  }
+
+  Future<void> deleteConversation(String chatId) async {
+    final success = await _service.deleteConversationPermanently(chatId);
+    if (success) {
+      _inbox.removeWhere((c) => c.id == chatId);
+      _messagesCache.remove(chatId);
+      notifyListeners();
     }
   }
 
@@ -227,6 +328,8 @@ class ChatProvider with ChangeNotifier {
           lastMessage: data['last_message'],
           lastMessageTime: DateTime.parse(data['time']),
           unreadCount: data['unread_count'],
+          targetUserId: oldChat.targetUserId,
+          targetUsername: oldChat.targetUsername,
         ),
       );
       notifyListeners();
@@ -239,15 +342,26 @@ class ChatProvider with ChangeNotifier {
     socket?.emit('typing', {'chat_id': chatId, 'is_typing': isTyping});
   }
 
-  void sendMessage(String chatId, String text, String myUserId) {
+  void sendMessage(
+    String chatId,
+    String text,
+    String myUserId, {
+    String? myName,
+    String? myAvatar,
+    String? replyToId,
+  }) {
     final tempMessage = ChatMessage(
       id: "temp_${DateTime.now().millisecondsSinceEpoch}",
       chatId: chatId,
       senderId: myUserId,
+      senderName: myName,
+      senderAvatar: myAvatar,
       text: text,
       type: 'text',
+      time: DateTime.now(),
       sentAt: DateTime.now(),
       isRead: false,
+      replyTo: null,
     );
 
     final currentList = _messagesCache[chatId] ?? [];
@@ -258,6 +372,7 @@ class ChatProvider with ChangeNotifier {
       'chat_id': chatId,
       'text': text,
       'type': 'text',
+      'reply_to_id': replyToId,
     });
   }
 

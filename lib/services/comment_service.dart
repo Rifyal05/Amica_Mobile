@@ -60,4 +60,15 @@ class CommentService {
       return {'success': false, 'status': 'error', 'message': e.toString()};
     }
   }
+
+  Future<bool> deleteComment(String commentId) async {
+    try {
+      final response = await _client.delete(
+        Uri.parse('${ApiConfig.baseUrl}/api/comments/$commentId'),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 }

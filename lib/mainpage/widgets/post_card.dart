@@ -1,7 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+import 'package:share_plus/share_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 import '../../models/post_model.dart';
 import '../../provider/auth_provider.dart';
@@ -10,10 +16,12 @@ import '../../provider/post_provider.dart';
 import '../../provider/profile_provider.dart';
 import '../../services/api_config.dart';
 import '../../services/report_serices.dart';
+import '../../services/custom_cache_manager.dart';
 import '../helper/utils_helper.dart';
 import '../post_detail_page.dart';
 import '../user_profile_page.dart';
 import '../create_post_page.dart';
+import '../discover_page.dart';
 import 'expandable_caption.dart';
 import 'adaptive_image_card.dart';
 
@@ -55,11 +63,6 @@ class _PostCardState extends State<PostCard>
         _isSaved = widget.post.isSaved;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   String? _getAvatarUrl(String? url) {
@@ -240,26 +243,35 @@ class _PostCardState extends State<PostCard>
     bool isDialog = false,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isMore
-            ? colorScheme.primaryContainer
-            : colorScheme.surfaceContainerHighest.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
+    return GestureDetector(
+      onTap: () {
+        if (isMore) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => DiscoverPage(initialQuery: label)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
           color: isMore
-              ? colorScheme.primary.withOpacity(0.2)
-              : Colors.transparent,
-          width: 1,
+              ? colorScheme.primaryContainer
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isMore
+                ? colorScheme.primary.withValues(alpha: 0.2)
+                : Colors.transparent,
+            width: 1,
+          ),
         ),
-      ),
-      child: Text(
-        isMore ? label : "#$label",
-        style: TextStyle(
-          color: isMore ? colorScheme.primary : colorScheme.onSurfaceVariant,
-          fontWeight: isMore ? FontWeight.bold : FontWeight.w500,
-          fontSize: isDialog ? 14 : 12,
+        child: Text(
+          isMore ? label : "#$label",
+          style: TextStyle(
+            color: isMore ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            fontWeight: isMore ? FontWeight.bold : FontWeight.w500,
+            fontSize: isDialog ? 14 : 12,
+          ),
         ),
       ),
     );
@@ -279,102 +291,183 @@ class _PostCardState extends State<PostCard>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Wrap(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.share_outlined),
-            title: const Text("Bagikan"),
-            onTap: () {
-              Navigator.pop(ctx);
-            },
-          ),
-
-          if (isMyPost)
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                "Hapus Postingan",
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () {
+              leading: const Icon(Icons.share_outlined),
+              title: const Text("Bagikan"),
+              onTap: () async {
                 Navigator.pop(ctx);
-                _showDeleteConfirmDialog(postProvider);
+                _handleShare();
               },
             ),
 
-          if (!isMyPost && isFollowing)
-            ListTile(
-              leading: const Icon(
-                Icons.person_remove_outlined,
-                color: Colors.orange,
+            if (isMyPost)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  "Hapus Postingan",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showDeleteConfirmDialog(postProvider);
+                },
               ),
-              title: Text(
-                "Berhenti mengikuti @${widget.post.author.username}",
-                style: const TextStyle(color: Colors.orange),
-              ),
-              onTap: () async {
-                Navigator.pop(ctx);
 
-                await postProvider.toggleFollowFromFeed(widget.post.author.id);
+            if (!isMyPost && isFollowing)
+              ListTile(
+                leading: const Icon(
+                  Icons.person_remove_outlined,
+                  color: Colors.orange,
+                ),
+                title: Text(
+                  "Berhenti mengikuti @${widget.post.author.username}",
+                  style: const TextStyle(color: Colors.orange),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
 
-                if (mounted) {
-                  postProvider.refreshPosts();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "Berhenti mengikuti @${widget.post.author.username}",
-                      ),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-            ),
-
-          if (!isMyPost)
-            ListTile(
-              leading: const Icon(
-                Icons.report_gmailerrorred_outlined,
-                color: Colors.red,
-              ),
-              title: const Text(
-                "Laporkan Postingan",
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () async {
-                Navigator.pop(ctx);
-
-                final reason = await showReportReasonDialog(context);
-
-                if (reason != null && reason.isNotEmpty) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Mengirim laporan...")),
-                    );
-                  }
-
-                  final result = await reportService.submitReport(
-                    targetType: 'post',
-                    targetId: widget.post.id,
-                    reason: reason,
+                  await postProvider.toggleFollowFromFeed(
+                    widget.post.author.id,
                   );
 
                   if (mounted) {
+                    postProvider.refreshPosts();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(result['message']),
-                        backgroundColor: result['success']
-                            ? Colors.green
-                            : Colors.red,
+                        content: Text(
+                          "Berhenti mengikuti @${widget.post.author.username}",
+                        ),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   }
-                }
-              },
-            ),
-        ],
+                },
+              ),
+
+            if (!isMyPost)
+              ListTile(
+                leading: const Icon(
+                  Icons.report_gmailerrorred_outlined,
+                  color: Colors.red,
+                ),
+                title: const Text(
+                  "Laporkan Postingan",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+
+                  final reason = await showReportReasonDialog(context);
+
+                  if (reason != null && reason.isNotEmpty) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Mengirim laporan...")),
+                      );
+                    }
+
+                    final result = await reportService.submitReport(
+                      targetType: 'post',
+                      targetId: widget.post.id,
+                      reason: reason,
+                    );
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result['message']),
+                          backgroundColor: result['success']
+                              ? Colors.green
+                              : Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _handleShare() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final String domain = "http://192.168.1.10:5000";
+      final String postLink = "$domain/post/${widget.post.id}";
+
+      final String shareText =
+          "${widget.post.caption}\n\n"
+          "Lihat selengkapnya di Amica: $postLink";
+
+      await Clipboard.setData(ClipboardData(text: shareText));
+
+      if (widget.post.fullImageUrl != null &&
+          widget.post.fullImageUrl!.isNotEmpty) {
+        final url = Uri.parse(widget.post.fullImageUrl!);
+        final response = await http.get(url);
+
+        if (response.statusCode == 200) {
+          final tempDir = await getTemporaryDirectory();
+          final path = '${tempDir.path}/share_image.jpg';
+          final file = File(path);
+          await file.writeAsBytes(response.bodyBytes);
+
+          if (!context.mounted) return;
+          Navigator.pop(context);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Caption disalin! Tempel saat membagikan."),
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          final params = ShareParams(
+            text: shareText,
+            subject: 'Postingan dari Amica',
+            files: [XFile(path)],
+          );
+          await SharePlus.instance.share(params);
+        } else {
+          if (!context.mounted) return;
+          Navigator.pop(context);
+          _shareTextOnly(shareText);
+        }
+      } else {
+        if (!context.mounted) return;
+        Navigator.pop(context);
+        _shareTextOnly(shareText);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gagal membagikan konten")),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareTextOnly(String text) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Link disalin! Tempel saat membagikan."),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    final params = ShareParams(text: text, subject: 'Postingan dari Amica');
+    await SharePlus.instance.share(params);
   }
 
   @override
@@ -422,7 +515,7 @@ class _PostCardState extends State<PostCard>
                 color: colorScheme.surface,
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.15),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.15),
                     width: 1,
                   ),
                 ),
@@ -440,24 +533,28 @@ class _PostCardState extends State<PostCard>
                             radius: 18,
                             backgroundColor:
                                 colorScheme.surfaceContainerHighest,
-                            backgroundImage:
-                                _getAvatarUrl(widget.post.author.avatarUrl) !=
-                                    null
-                                ? NetworkImage(
+                            child: ClipOval(
+                              child: CachedNetworkImage(
+                                imageUrl:
                                     _getAvatarUrl(
                                       widget.post.author.avatarUrl,
-                                    )!,
-                                  )
-                                : null,
-                            child:
-                                _getAvatarUrl(widget.post.author.avatarUrl) ==
-                                    null
-                                ? Icon(
-                                    Icons.person,
-                                    size: 20,
-                                    color: colorScheme.onSurfaceVariant,
-                                  )
-                                : null,
+                                    ) ??
+                                    '',
+                                cacheManager: ProfileCacheManager.instance,
+                                fit: BoxFit.cover,
+                                width: 36,
+                                height: 36,
+                                placeholder: (context, url) =>
+                                    const CircularProgressIndicator(
+                                      strokeWidth: 1,
+                                    ),
+                                errorWidget: (context, url, error) => Icon(
+                                  Icons.person,
+                                  size: 20,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -467,12 +564,27 @@ class _PostCardState extends State<PostCard>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  widget.post.author.displayName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        widget.post.author.displayName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (widget.post.author.isVerified) ...[
+                                      const SizedBox(width: 4),
+                                      Image.asset(
+                                        'source/images/verified.png',
+                                        width: 14,
+                                        height: 14,
+                                      ),
+                                    ],
+                                  ],
                                 ),
                                 Text(
                                   _formatTimeAgo(widget.post.timestamp),
@@ -617,7 +729,7 @@ class _PostCardState extends State<PostCard>
                         ],
 
                         IconButton(
-                          onPressed: () {},
+                          onPressed: _handleShare,
                           icon: Icon(
                             Icons.share_rounded,
                             size: 24,
@@ -764,7 +876,7 @@ class _LikeButtonWithBurstState extends State<_LikeButtonWithBurst>
                   ),
                 ),
               );
-            }).toList(),
+            }),
           Row(
             children: [
               AnimatedSwitcher(
@@ -812,7 +924,8 @@ class _HeartParticle {
 
 class _FullScreenImagePage extends StatelessWidget {
   final String imageUrl;
-  const _FullScreenImagePage({super.key, required this.imageUrl});
+
+  const _FullScreenImagePage({required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -822,7 +935,16 @@ class _FullScreenImagePage extends StatelessWidget {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Center(child: InteractiveViewer(child: Image.network(imageUrl))),
+      body: Center(
+        child: InteractiveViewer(
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            placeholder: (context, url) => const CircularProgressIndicator(),
+            errorWidget: (context, url, error) =>
+                const Icon(Icons.error, color: Colors.white),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -6,7 +6,7 @@ import '../models/bot_model.dart';
 class BotProvider with ChangeNotifier {
   final BotService _service = BotService();
 
-  List<BotMessageModel> _messages = [];
+  final List<BotMessageModel> _messages = [];
   bool _isTyping = false;
   String _currentStreamBuffer = "";
   String _statusMessage = "";
@@ -24,7 +24,6 @@ class BotProvider with ChangeNotifier {
   Future<void> sendMessage(String text, String token) async {
     if (text.isEmpty) return;
 
-    // 1. Tambah pesan User ke UI
     _messages.add(BotMessageModel(role: 'user', content: text));
     _isTyping = true;
     _currentStreamBuffer = "";
@@ -32,7 +31,6 @@ class BotProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Ambil history singkat (pesan terakhir bot)
       String history = "";
       if (_messages.length > 2) {
         final lastBotMsg = _messages.lastWhere(

@@ -48,14 +48,18 @@ class UserService {
     required String bio,
     File? avatarFile,
     File? bannerFile,
+    String? practiceAddress,
+    String? practiceSchedule,
+    String? province,
+    bool isProfessional = false,
   }) async {
     final token = await _getToken();
     if (token == null) return {'success': false, 'message': 'Unauthorized'};
 
     try {
       var request = http.MultipartRequest(
-          'PUT',
-          Uri.parse('${ApiConfig.baseUrl}/api/users/update')
+        'PUT',
+        Uri.parse('${ApiConfig.baseUrl}/api/users/update'),
       );
       request.headers['Authorization'] = 'Bearer $token';
 
@@ -64,20 +68,104 @@ class UserService {
       request.fields['bio'] = bio;
 
       if (avatarFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('avatar', avatarFile.path));
+        request.files.add(
+          await http.MultipartFile.fromPath('avatar', avatarFile.path),
+        );
       }
       if (bannerFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('banner', bannerFile.path));
+        request.files.add(
+          await http.MultipartFile.fromPath('banner', bannerFile.path),
+        );
       }
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode == 200) {
-        return {'success': true};
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Gagal update profil',
+        };
+      }
+
+      if (isProfessional) {
+        final proResponse = await http.put(
+          Uri.parse('${ApiConfig.baseUrl}/api/pro/update'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'address': practiceAddress,
+            'schedule': practiceSchedule,
+            'province': province,
+          }),
+        );
+
+        if (proResponse.statusCode != 200) {
+          final proData = jsonDecode(proResponse.body);
+          return {
+            'success': true,
+            'message':
+                'Profil umum diperbarui, namun info profesional gagal: ${proData['error']}',
+          };
+        }
+      }
+
+      return {'success': true, 'message': 'Profil berhasil diperbarui'};
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> applyVerification({
+    required String fullName,
+    required String strNumber,
+    required String province,
+    required String address,
+    required String schedule,
+    required File strImage,
+    required File ktpImage,
+    required File selfieImage,
+  }) async {
+    final token = await _getToken();
+    if (token == null) return {'success': false, 'message': 'Unauthorized'};
+
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/api/pro/apply'),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+
+      request.fields['full_name'] = fullName;
+      request.fields['str_number'] = strNumber;
+      request.fields['province'] = province;
+      request.fields['address'] = address;
+      request.fields['schedule'] = schedule;
+
+      request.files.add(
+        await http.MultipartFile.fromPath('str_image', strImage.path),
+      );
+      request.files.add(
+        await http.MultipartFile.fromPath('ktp_image', ktpImage.path),
+      );
+      request.files.add(
+        await http.MultipartFile.fromPath('selfie_image', selfieImage.path),
+      );
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        return {'success': true, 'message': 'Permohonan berhasil dikirim'};
       } else {
         final data = jsonDecode(response.body);
-        return {'success': false, 'message': data['error'] ?? 'Gagal update'};
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Gagal mengirim data',
+        };
       }
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
@@ -110,7 +198,9 @@ class UserService {
   Future<bool> updateSavedPrivacy(bool isPublic) async {
     try {
       final response = await _client.patch(
-        Uri.parse('${ApiConfig.baseUrl}/api/users/settings/privacy/saved-posts'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/users/settings/privacy/saved-posts',
+        ),
         body: jsonEncode({'is_public': isPublic}),
       );
 
@@ -126,9 +216,7 @@ class UserService {
         Uri.parse('${ApiConfig.baseUrl}/api/users/device-id'),
         body: jsonEncode({'player_id': playerId}),
       );
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   }
 
   Future<String?> changePassword(String oldPass, String newPass) async {
@@ -140,7 +228,9 @@ class UserService {
       if (response.statusCode == 200) return null;
       final data = jsonDecode(response.body);
       return data['error'] ?? 'Gagal mengganti password';
-    } catch (e) { return e.toString(); }
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   Future<String?> changeEmail(String newEmail, String password) async {
@@ -152,7 +242,9 @@ class UserService {
       if (response.statusCode == 200) return null;
       final data = jsonDecode(response.body);
       return data['error'] ?? 'Gagal mengganti email';
-    } catch (e) { return e.toString(); }
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   Future<List<User>> getBlockedUsers() async {
@@ -165,7 +257,9 @@ class UserService {
         return data.map((e) => User.fromJson(e)).toList();
       }
       return [];
-    } catch (e) { return []; }
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<bool> unblockUser(String targetId) async {
@@ -174,7 +268,20 @@ class UserService {
         Uri.parse('${ApiConfig.baseUrl}/api/users/unblock/$targetId'),
       );
       return response.statusCode == 200;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> blockUser(String targetId) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/users/block/$targetId'),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<bool> sendFeedback(String text) async {
@@ -184,6 +291,40 @@ class UserService {
         body: jsonEncode({'feedback_text': text}),
       );
       return response.statusCode == 201;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> getFollowers(
+    String userId,
+    int page,
+    String query,
+  ) async {
+    final response = await _client.get(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/users/$userId/followers?page=$page&q=$query',
+      ),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Gagal memuat pengikut');
+  }
+
+  Future<Map<String, dynamic>> getFollowing(
+    String userId,
+    int page,
+    String query,
+  ) async {
+    final response = await _client.get(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/users/$userId/following?page=$page&q=$query',
+      ),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Gagal memuat mengikuti');
   }
 }

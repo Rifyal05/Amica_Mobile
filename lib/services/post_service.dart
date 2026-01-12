@@ -17,13 +17,8 @@ class PostService {
     try {
       String url =
           '${ApiConfig.baseUrl}/api/posts/?page=$page&per_page=$perPage&filter=$filter';
-
-      if (userId != null) {
-        url += '&user_id=$userId';
-      }
-
+      if (userId != null) url += '&user_id=$userId';
       final response = await _client.get(Uri.parse(url));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> postsJson = data['posts'];
@@ -37,6 +32,20 @@ class PostService {
       }
     } catch (e) {
       return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Post?> getPostById(String postId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/posts/detail/$postId'),
+      );
+      if (response.statusCode == 200) {
+        return Post.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -69,28 +78,34 @@ class PostService {
   }) async {
     try {
       final streamedResponse = await _client.sendMultipartRequest(() async {
-        var uri = Uri.parse('${ApiConfig.baseUrl}/api/posts/');
-        var request = http.MultipartRequest('POST', uri);
-
+        var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('${ApiConfig.baseUrl}/api/posts/'),
+        );
         request.fields['caption'] = caption;
         for (var tag in tags) {
           request.files.add(http.MultipartFile.fromString('tags', tag));
         }
-
         if (imageFile != null) {
           request.files.add(
             await http.MultipartFile.fromPath('image', imageFile.path),
           );
         }
-
         return request;
       });
-
       final response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
-
-      if (response.statusCode == 201) {
-        return {'success': true, 'message': 'Postingan berhasil dibuat'};
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        Post? fullPost;
+        if (data['post_id'] != null) {
+          fullPost = await getPostById(data['post_id']);
+        }
+        return {
+          'success': response.statusCode == 201,
+          'is_moderated': data['status'] == 'rejected',
+          'message': data['message'],
+          'post': fullPost,
+        };
       } else if (response.statusCode == 403) {
         return {
           'success': false,
@@ -113,6 +128,51 @@ class PostService {
     try {
       final response = await _client.delete(
         Uri.parse('${ApiConfig.baseUrl}/api/posts/$postId'),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<Post>> getMyModerationPosts() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/posts/my-moderation'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Post.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> submitAppeal(
+    String postId,
+    String justification,
+  ) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/posts/$postId/appeal'),
+        body: jsonEncode({'justification': justification}),
+      );
+      final data = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 201,
+        'message': data['message'] ?? data['error'],
+      };
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<bool> acknowledgeRejection(String postId) async {
+    try {
+      final response = await _client.delete(
+        Uri.parse('${ApiConfig.baseUrl}/api/posts/$postId/acknowledge'),
       );
       return response.statusCode == 200;
     } catch (e) {

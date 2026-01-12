@@ -9,6 +9,12 @@ class UserProfileData {
   final String? bannerUrl;
   final UserStats stats;
   final UserStatus status;
+  final bool isVerified;
+  final String? fullNameWithTitle;
+  final String? strNumber;
+  final String? province;
+  final String? practiceAddress;
+  final String? practiceSchedule;
 
   UserProfileData({
     required this.id,
@@ -19,6 +25,12 @@ class UserProfileData {
     this.bannerUrl,
     required this.stats,
     required this.status,
+    this.isVerified = false,
+    this.fullNameWithTitle,
+    this.strNumber,
+    this.province,
+    this.practiceAddress,
+    this.practiceSchedule,
   });
 
   String? get fullAvatarUrl => ApiConfig.getFullUrl(avatarUrl);
@@ -34,6 +46,12 @@ class UserProfileData {
       bannerUrl: json['banner_url'],
       stats: UserStats.fromJson(json['stats'] ?? {}),
       status: UserStatus.fromJson(json['status'] ?? {}),
+      isVerified: json['is_verified'] ?? false,
+      fullNameWithTitle: json['full_name'],
+      strNumber: json['str_number'],
+      province: json['province'],
+      practiceAddress: json['address'],
+      practiceSchedule: json['schedule'],
     );
   }
 
@@ -54,7 +72,14 @@ class UserProfileData {
         'is_me': status.isMe,
         'is_following': status.isFollowing,
         'is_saved_posts_public': status.isSavedPostsPublic,
+        'is_blocked': status.isBlocked,
       },
+      'is_verified': isVerified,
+      'full_name': fullNameWithTitle,
+      'str_number': strNumber,
+      'province': province,
+      'address': practiceAddress,
+      'schedule': practiceSchedule,
     };
   }
 }
@@ -83,11 +108,13 @@ class UserStatus {
   final bool isMe;
   final bool isFollowing;
   final bool isSavedPostsPublic;
+  final bool isBlocked;
 
   UserStatus({
     required this.isMe,
     required this.isFollowing,
     required this.isSavedPostsPublic,
+    this.isBlocked = false,
   });
 
   factory UserStatus.fromJson(Map<String, dynamic> json) {
@@ -95,6 +122,7 @@ class UserStatus {
       isMe: json['is_me'] ?? false,
       isFollowing: json['is_following'] ?? false,
       isSavedPostsPublic: json['is_saved_posts_public'] ?? false,
+      isBlocked: json['is_blocked'] ?? false,
     );
   }
 }

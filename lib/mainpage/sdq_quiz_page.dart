@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/sdq_provider.dart';
-import '../models/sdq_model.dart'; // Pastikan ini diimpor
-import 'sdq_results_page.dart'; // Halaman hasil detail
+// Pastikan ini diimpor
+import 'sdq_results_page.dart';
 
 class SdQuizPage extends StatefulWidget {
   const SdQuizPage({super.key});
