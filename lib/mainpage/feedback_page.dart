@@ -32,8 +32,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Tutup dialog
-                Navigator.pop(context); // Kembali ke Settings
+                Navigator.pop(context);
+                Navigator.pop(context);
               },
               child: const Text("OK"),
             ),

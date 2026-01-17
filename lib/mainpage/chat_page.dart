@@ -11,7 +11,6 @@ import '../services/chat_service.dart';
 import '../services/user_service.dart';
 import 'group_info_page.dart';
 import 'user_profile_page.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class ChatPage extends StatefulWidget {
   final String chatId;

@@ -50,6 +50,8 @@ class AuthService {
     }
   }
 
+
+  // KIRIM KE BACKEND UNTUK VERIFIKASI AUTH
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
@@ -90,6 +92,7 @@ class AuthService {
       return {'success': false, 'message': 'Koneksi ke server gagal: $e'};
     }
   }
+  //  VERSI GOOGLE
 
   Future<Map<String, dynamic>> loginWithGoogle() async {
     try {
@@ -164,6 +167,7 @@ class AuthService {
     }
   }
 
+  // VERIFY PIN
   Future<Map<String, dynamic>> verifyPin(String tempId, String pin) async {
     try {
       final response = await http.post(
@@ -188,7 +192,7 @@ class AuthService {
       return {'success': false, 'message': 'Error: $e'};
     }
   }
-
+  // SET PIN DI SETTING
   Future<Map<String, dynamic>> setPin(String pin, String token) async {
     try {
       final response = await http.post(
@@ -212,6 +216,7 @@ class AuthService {
     }
   }
 
+  // REMOVE PIN
   Future<Map<String, dynamic>> removePin(
     String currentPin,
     String token,
@@ -238,6 +243,7 @@ class AuthService {
     }
   }
 
+  // RESET PIN
   Future<Map<String, dynamic>> resetPinByOtp(
     String email,
     String otp,
@@ -259,6 +265,7 @@ class AuthService {
     }
   }
 
+  // REFRESH TOKEN
   Future<String?> refreshToken() async {
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refresh_token');
@@ -289,6 +296,7 @@ class AuthService {
     }
   }
 
+  // LOGOUT DARI AKUN
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');

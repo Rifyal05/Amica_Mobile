@@ -122,4 +122,26 @@ class DiscoverService {
       return null;
     }
   }
+
+  Future<Article?> findArticleByUrl(String url) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/discover/articles/lookup'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'url': url}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['found'] == true) {
+          return Article.fromJson(data['article']);
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+
 }

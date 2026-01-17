@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/auth_provider.dart';
+import '../navigation/main_navigator.dart';
 
 class CreatePasswordPage extends StatefulWidget {
   const CreatePasswordPage({super.key});
@@ -49,6 +50,16 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (error == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password berhasil diatur!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainNavigator()),
+          (route) => false,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(error), backgroundColor: Colors.red),
@@ -87,7 +98,6 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
                   style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 32),
-
                 TextField(
                   controller: _passController,
                   obscureText: !_isPasswordVisible,
@@ -108,7 +118,6 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 TextField(
                   controller: _confirmController,
                   obscureText: !_isConfirmVisible,
@@ -129,7 +138,6 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
                 ElevatedButton(
                   onPressed: _isLoading ? null : _handleSave,
                   style: ElevatedButton.styleFrom(

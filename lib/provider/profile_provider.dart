@@ -38,6 +38,7 @@ class ProfileProvider with ChangeNotifier {
   bool get isSavedCollectionPrivate => _isSavedCollectionPrivate;
   bool get myPrivacySetting => _myPrivacySetting;
 
+  // 1
   Future<void> loadFullProfile(String userId, {String? currentUserId}) async {
     _targetUserId = userId;
     _isLoadingProfile = true;

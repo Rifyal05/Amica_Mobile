@@ -16,6 +16,7 @@ class UserService {
     return prefs.getString('auth_token');
   }
 
+  // 0
   Future<UserProfileData?> getUserProfile(String userId) async {
     try {
       final response = await _client.get(
@@ -172,6 +173,7 @@ class UserService {
     }
   }
 
+  // 1
   Future<Map<String, dynamic>> getSavedPosts(String targetUserId) async {
     try {
       final response = await _client.get(
@@ -195,6 +197,7 @@ class UserService {
     }
   }
 
+  // 2
   Future<bool> updateSavedPrivacy(bool isPublic) async {
     try {
       final response = await _client.patch(
@@ -296,6 +299,7 @@ class UserService {
     }
   }
 
+  // 3
   Future<Map<String, dynamic>> getFollowers(
     String userId,
     int page,
@@ -312,6 +316,7 @@ class UserService {
     throw Exception('Gagal memuat pengikut');
   }
 
+  // 4
   Future<Map<String, dynamic>> getFollowing(
     String userId,
     int page,

@@ -53,7 +53,9 @@ class ModerationDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isFinalRejected = post.moderationStatus == 'final_rejected';
+    final isDeletedByAdmin =
+        post.moderationStatus == 'final_rejected' ||
+        post.moderationStatus == 'quarantined';
 
     return Scaffold(
       appBar: AppBar(title: const Text("Detail Moderasi")),
@@ -62,7 +64,9 @@ class ModerationDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (post.imageUrl != null)
+            if (post.imageUrl != null &&
+                post.imageUrl!.isNotEmpty &&
+                !isDeletedByAdmin)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: ConstrainedBox(
@@ -74,7 +78,7 @@ class ModerationDetailPage extends StatelessWidget {
                   ),
                 ),
               )
-            else if (isFinalRejected)
+            else if (isDeletedByAdmin)
               Container(
                 height: 150,
                 width: double.infinity,
@@ -106,11 +110,14 @@ class ModerationDetailPage extends StatelessWidget {
             ),
             Text(post.caption, style: theme.textTheme.bodyLarge),
             const Divider(height: 40),
-            _buildAnalysisCard(colorScheme),
-            if (post.adminNote != null) ...[
+
+            if (!isDeletedByAdmin) ...[
+              _buildAnalysisCard(colorScheme),
               const SizedBox(height: 20),
-              _buildAdminNoteCard(colorScheme),
             ],
+
+            if (post.adminNote != null) _buildAdminNoteCard(colorScheme),
+
             const SizedBox(height: 32),
             if (post.moderationStatus == 'rejected') ...[
               SizedBox(
@@ -140,7 +147,7 @@ class ModerationDetailPage extends StatelessWidget {
                   child: const Text("SAYA MENGERTI, HAPUS POSTINGAN"),
                 ),
               ),
-            ] else if (isFinalRejected) ...[
+            ] else if (isDeletedByAdmin) ...[
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.tonal(
@@ -158,7 +165,7 @@ class ModerationDetailPage extends StatelessWidget {
                 child: Column(
                   children: [
                     CircularProgressIndicator(),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
                       "Sedang ditinjau oleh Admin...",
                       style: TextStyle(fontStyle: FontStyle.italic),
@@ -175,8 +182,8 @@ class ModerationDetailPage extends StatelessWidget {
 
   Widget _buildAnalysisCard(ColorScheme colorScheme) {
     final details = post.moderationDetails;
-    if (details == null || details.isEmpty)
-      return const Text("Data analisis AI tidak tersedia.");
+    if (details == null || details.isEmpty) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

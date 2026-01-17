@@ -21,7 +21,10 @@ class _ModerationListPageState extends State<ModerationListPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ModerationProvider>().fetchModeratedPosts();
     });
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) => setState(() {}));
+    _timer = Timer.periodic(
+      const Duration(minutes: 1),
+      (timer) => setState(() {}),
+    );
   }
 
   @override
@@ -40,7 +43,6 @@ class _ModerationListPageState extends State<ModerationListPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ModerationProvider>();
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text("Status Konten")),
@@ -49,77 +51,105 @@ class _ModerationListPageState extends State<ModerationListPage> {
           : provider.moderatedPosts.isEmpty
           ? _buildEmptyState()
           : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: provider.moderatedPosts.length,
-        itemBuilder: (context, index) {
-          final post = provider.moderatedPosts[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ModerationDetailPage(post: post)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    color: Colors.grey[300],
-                    child: post.imageUrl != null
-                        ? CachedNetworkImage(
-                      imageUrl: post.fullImageUrl!,
-                      fit: BoxFit.cover,
-                    )
-                        : const Icon(Icons.text_fields),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildStatusBadge(post),
-                          const SizedBox(height: 4),
-                          Text(
-                            post.caption,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          if (post.moderationStatus == 'rejected')
-                            Text(
-                              "Dihapus otomatis dalam: ${_getTimeRemaining(post.expiresAt)}",
-                              style: TextStyle(color: Colors.red[400], fontSize: 11),
-                            ),
-                        ],
+              padding: const EdgeInsets.all(16),
+              itemCount: provider.moderatedPosts.length,
+              itemBuilder: (context, index) {
+                final post = provider.moderatedPosts[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ModerationDetailPage(post: post),
                       ),
+                    ).then((_) => provider.fetchModeratedPosts()),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          color: Colors.grey[300],
+                          child:
+                              (post.imageUrl != null &&
+                                  post.imageUrl!.isNotEmpty)
+                              ? CachedNetworkImage(
+                                  imageUrl: post.fullImageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) =>
+                                      const Icon(Icons.broken_image),
+                                )
+                              : const Icon(Icons.text_fields),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildStatusBadge(post),
+                                const SizedBox(height: 4),
+                                Text(
+                                  post.caption,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (post.moderationStatus == 'rejected')
+                                  Text(
+                                    "Dihapus otomatis dalam: ${_getTimeRemaining(post.expiresAt)}",
+                                    style: TextStyle(
+                                      color: Colors.red[400],
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right),
+                        const SizedBox(width: 8),
+                      ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right),
-                  const SizedBox(width: 8),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 
   Widget _buildStatusBadge(post) {
-    final isAppealing = post.moderationStatus == 'appealing';
+    String label;
+    Color color;
+
+    switch (post.moderationStatus) {
+      case 'appealing':
+        label = "SEDANG DITINJAU";
+        color = Colors.orange;
+        break;
+      case 'quarantined':
+      case 'final_rejected':
+        label = "DITOLAK ADMIN";
+        color = Colors.red[900]!;
+        break;
+      default:
+        label = "DITOLAK AI";
+        color = Colors.red;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: isAppealing ? Colors.orange.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        isAppealing ? "SEDANG DITINJAU" : "DITOLAK AI",
+        label,
         style: TextStyle(
-          color: isAppealing ? Colors.orange : Colors.red,
+          color: color,
           fontSize: 10,
           fontWeight: FontWeight.bold,
         ),

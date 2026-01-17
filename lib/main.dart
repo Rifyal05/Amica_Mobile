@@ -9,7 +9,6 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-
 import 'firebase_options.dart';
 import 'login/login_page.dart';
 import 'login/create_password_page.dart';

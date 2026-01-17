@@ -7,6 +7,7 @@ import '../provider/auth_provider.dart';
 import '../provider/theme_provider.dart';
 import '../theme/colors.dart';
 import 'forgot_password_flow_page.dart';
+import 'create_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -65,9 +66,7 @@ class _LoginPageState extends State<LoginPage> {
             MaterialPageRoute(
               builder: (context) => VerifyPinPage(
                 tempId: result['temp_id'],
-                email:
-                    result['email'] ??
-                    identifier,
+                email: result['email'] ?? identifier,
               ),
             ),
           );
@@ -87,13 +86,18 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
 
       if (result['success'] == true) {
-        // Login Sukses langsung masuk
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const MainNavigator()),
-          (Route<dynamic> route) => false,
-        );
+        if (authProvider.needsPasswordSet) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const CreatePasswordPage()),
+            (Route<dynamic> route) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const MainNavigator()),
+            (Route<dynamic> route) => false,
+          );
+        }
       } else if (result['status'] == 'pin_required') {
-        // --- LOGIKA PIN HANDLING GOOGLE DISINI ---
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => VerifyPinPage(
@@ -198,10 +202,9 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 40),
-
                     TextField(
                       controller: _identifierController,
-                      textInputAction: TextInputAction.next,
+                      textInputAction: TextInputAction.next, // TEXTFIELD KOLOM USERNAME/EMAIL
                       decoration: const InputDecoration(
                         labelText: 'Username atau Email',
                         prefixIcon: Icon(Icons.person_outline),
@@ -211,7 +214,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
@@ -236,7 +238,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
@@ -253,9 +254,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     OutlinedButton(
                       onPressed: _isLoading ? null : _handleGoogleLogin,
                       style: OutlinedButton.styleFrom(
@@ -273,7 +272,6 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                     ),
-
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
@@ -289,7 +287,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -303,7 +300,7 @@ class _LoginPageState extends State<LoginPage> {
                             );
                           },
                           child: Text(
-                            'Daftar sekarang',
+                             'Daftar sekarang',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w600,

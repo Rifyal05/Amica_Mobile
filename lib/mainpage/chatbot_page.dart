@@ -4,6 +4,11 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../provider/auth_provider.dart';
 import '../provider/bot_provider.dart';
+import '../provider/post_provider.dart';
+import '../models/article_model.dart';
+import '../services/discover_services.dart';
+import 'post_detail_page.dart';
+import 'article_detail_page.dart';
 
 class ChatbotPage extends StatefulWidget {
   const ChatbotPage({super.key});
@@ -15,19 +20,13 @@ class ChatbotPage extends StatefulWidget {
 class _ChatbotPageState extends State<ChatbotPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final DiscoverService _discoverService = DiscoverService();
 
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-
     final token = context.read<AuthProvider>().token;
-    if (token == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Anda perlu login.")));
-      return;
-    }
-
+    if (token == null) return;
     context.read<BotProvider>().sendMessage(text, token);
     _controller.clear();
     _scrollToBottom();
@@ -45,19 +44,175 @@ class _ChatbotPageState extends State<ChatbotPage> {
     });
   }
 
+  String _cleanUrl(String url) {
+    return url
+        .toLowerCase()
+        .replaceAll('https://', '')
+        .replaceAll('http://', '')
+        .replaceAll('www.', '')
+        .replaceAll(RegExp(r'/$'), '')
+        .trim();
+  }
+
   Future<void> _handleLinkTap(String? url) async {
     if (url == null) return;
-    final uri = Uri.parse(url);
+    debugPrint("🔍 DEBUG: URL ditangkap: '$url'");
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Tidak dapat membuka link")),
-        );
-      }
+    final uri = Uri.parse(url);
+    if (uri.host == 'withamica.my.id' && uri.path.contains('/post/')) {
+      _openInternalPost(uri.pathSegments.last);
+      return;
     }
+
+    _showLinkOptionsModal(url);
+  }
+
+  void _showLinkOptionsModal(String originalUrl) async {
+    _showLoading();
+
+    Article? matchedArticle;
+
+    try {
+      matchedArticle = await _discoverService.findArticleByUrl(originalUrl);
+    } catch (e) {
+      debugPrint("Error lookup article: $e");
+    }
+
+    if (mounted) Navigator.pop(context); // Tutup Loading
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                if (matchedArticle != null) ...[
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.menu_book_rounded,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text(
+                      "Baca di Aplikasi Amica",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: Text(
+                      matchedArticle.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ArticleDetailPage(article: matchedArticle!),
+                        ),
+                      );
+                    },
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Divider(),
+                  ),
+                ],
+
+                // TOMBOL DEFAULT BUKA DI BROWSER
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.public,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
+                  ),
+                  title: const Text(
+                    "Buka Sumber Asli",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  subtitle: const Text("Kunjungi website referensi"),
+                  onTap: () {
+                    Navigator.pop(context);
+                    launchUrl(
+                      Uri.parse(originalUrl),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openInternalPost(String postId) async {
+    _showLoading();
+    try {
+      final post = await context.read<PostProvider>().getPostById(postId);
+      if (mounted) Navigator.pop(context);
+      if (post != null && mounted) {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => PostDetailPage(post: post)));
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
+  void _showLoading() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
   }
 
   @override
@@ -79,7 +234,6 @@ class _ChatbotPageState extends State<ChatbotPage> {
       ),
       body: Column(
         children: [
-          // DISCLAIMER
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             color: isDark
@@ -109,8 +263,6 @@ class _ChatbotPageState extends State<ChatbotPage> {
               ],
             ),
           ),
-
-          // CHAT LIST
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -127,19 +279,13 @@ class _ChatbotPageState extends State<ChatbotPage> {
                     isTyping: true,
                   );
                 }
-
                 final msg = messages[index];
-
-                if (msg.role == 'user') {
-                  return _buildUserBubble(context, msg.content);
-                } else {
-                  return _buildBotBubble(context, text: msg.content);
-                }
+                return msg.role == 'user'
+                    ? _buildUserBubble(context, msg.content)
+                    : _buildBotBubble(context, text: msg.content);
               },
             ),
           ),
-
-          // INPUT FIELD
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -214,25 +360,16 @@ class _ChatbotPageState extends State<ChatbotPage> {
     bool isTyping = false,
   }) {
     final theme = Theme.of(context);
-
     String mainContent = text;
     List<Map<String, String>> citations = [];
 
-    // Regex untuk mengambil bagian Referensi Bacaan
-    final RegExp bacaanRegex = RegExp(
-      r'\n\n📚 \*\*Bacaan:\*\* (.*)',
-      dotAll: true,
-    );
-    final match = bacaanRegex.firstMatch(text);
-
-    if (match != null) {
-      String linksPart = match.group(1) ?? "";
-      mainContent = text.replaceAll(match.group(0)!, "").trim();
-
+    int iconIndex = text.indexOf('📚');
+    if (iconIndex != -1) {
+      mainContent = text.substring(0, iconIndex).trim();
+      String linkPart = text.substring(iconIndex);
       final RegExp linkRegex = RegExp(r'\[(.*?)\]\((.*?)\)');
-      final linkMatches = linkRegex.allMatches(linksPart);
-
-      for (final m in linkMatches) {
+      final Iterable<RegExpMatch> matches = linkRegex.allMatches(linkPart);
+      for (final m in matches) {
         citations.add({
           'title': m.group(1) ?? "Artikel",
           'url': m.group(2) ?? "",
@@ -256,6 +393,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             if (status.isNotEmpty)
               Padding(
@@ -269,56 +407,78 @@ class _ChatbotPageState extends State<ChatbotPage> {
                   ),
                 ),
               ),
-
-            // Markdown Render menggunakan flutter_markdown_plus
             MarkdownBody(
               data: mainContent,
               selectable: true,
               onTapLink: (text, href, title) => _handleLinkTap(href),
               styleSheet: MarkdownStyleSheet(
-                p: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15),
-                strong: TextStyle(
+                p: TextStyle(
                   color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  height: 1.5,
                 ),
-                listBullet: TextStyle(color: theme.colorScheme.onSurface),
-                blockquote: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                code: TextStyle(
-                  backgroundColor: theme.colorScheme.surfaceContainer,
-                  color: theme.colorScheme.onSurface,
-                  fontFamily: 'monospace',
-                ),
+                strong: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-
             if (citations.isNotEmpty && !isTyping) ...[
+              const SizedBox(height: 16),
+              const Divider(height: 0.5),
               const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 8),
               const Text(
-                "Sumber Bacaan:",
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                "Bacaan Terkait:",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
+                runSpacing: 10,
                 children: citations.map((cite) {
-                  return ActionChip(
-                    avatar: const Icon(Icons.link, size: 16),
-                    label: Text(
-                      cite['title']!,
-                      style: const TextStyle(fontSize: 12),
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _handleLinkTap(cite['url']),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.08),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withOpacity(0.15),
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.menu_book_rounded,
+                              size: 14,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                cite['title']!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    onPressed: () => _handleLinkTap(cite['url']),
-                    backgroundColor: theme.colorScheme.secondaryContainer,
-                    labelStyle: TextStyle(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
-                    side: BorderSide.none,
-                    padding: EdgeInsets.zero,
                   );
                 }).toList(),
               ),

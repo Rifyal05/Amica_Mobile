@@ -96,6 +96,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
     }
   }
 
+  // 1
   void _loadData() {
     final authProvider = context.read<AuthProvider>();
     final profileProvider = context.read<ProfileProvider>();
@@ -310,7 +311,6 @@ class _UserProfileContentState extends State<_UserProfileContent>
       fit: fit,
       width: width,
       height: height,
-      // Tambahkan cache manager untuk gambar post/grid
       cacheManager: PostCacheManager.instance,
       placeholder: (context, url) => Container(
         width: width,
@@ -336,12 +336,13 @@ class _UserProfileContentState extends State<_UserProfileContent>
     );
   }
 
+  // 2
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final provider = context.watch<ProfileProvider>();
-    final profile = provider.userProfile;
+    final provider = context.watch<ProfileProvider>(); // memanggil dana mendengarkan provider
+    final profile = provider.userProfile; // mengambil objek
     final bool canGoBack = Navigator.of(context).canPop();
     final bool isInitialLoading = provider.isLoadingProfile && profile == null;
 
@@ -479,6 +480,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
                         ),
                       ),
                     if (canGoBack && !isMe) const SizedBox(width: 8),
+                    // scroll ke atas
                     GestureDetector(
                       onTap: _scrollToTop,
                       child: Container(
@@ -504,7 +506,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ),
     );
   }
-
+// 4
   Widget _buildImageGridTab(ProfileProvider provider) {
     if (provider.imagePosts.isEmpty && !provider.isLoadingPosts) {
       return _buildEmptyState(
@@ -517,7 +519,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (provider.userProfile!.status.isMe)
-          SliverToBoxAdapter(child: _buildCreatePostButton()),
+          SliverToBoxAdapter(child: _buildCreatePostButton()), // menampilkan tombol post
         SliverPadding(
           padding: const EdgeInsets.all(2),
           sliver: SliverGrid(
@@ -528,6 +530,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
               childAspectRatio: 1,
             ),
             delegate: SliverChildBuilderDelegate((context, index) {
+              // menampilkan image post user
               final post = provider.imagePosts[index];
               return InkWell(
                 onTap: () {
@@ -561,7 +564,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ],
     );
   }
-
+// menampilkan text post
   Widget _buildTextListTab(ProfileProvider provider) {
     if (provider.textPosts.isEmpty && provider.isLoadingProfile) {
       return const Center(child: CircularProgressIndicator());
@@ -592,7 +595,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ],
     );
   }
-
+// menampilkan post tab
   Widget _buildSavedPostsTab(ProfileProvider provider, bool isMe) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -648,7 +651,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
                     value: provider.myPrivacySetting,
                     activeThumbColor: colorScheme.primary,
                     onChanged: (val) async {
-                      bool success = await provider.togglePrivacySetting(val);
+                      bool success = await provider.togglePrivacySetting(val); // mengubah visibilitas
                       if (!success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -788,12 +791,13 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ),
     );
   }
-
+// 3
   Widget _buildProfileDetails(BuildContext context, UserProfileData profile) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final bool isMe = profile.status.isMe;
 
+    // NAMPILIN HALAMAN PROFIL
     return Column(
       children: [
         Stack(
@@ -803,7 +807,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
             SizedBox(
               height: 160,
               width: double.infinity,
-              child: profile.fullBannerUrl != null
+              child: profile.fullBannerUrl != null  // mengambil data dari objek dan menampilkan banner
                   ? _buildNetworkImage(profile.fullBannerUrl!)
                   : Container(color: Colors.grey.shade300),
             ),
@@ -820,8 +824,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
                 child: ClipOval(
                   child: profile.fullAvatarUrl != null
                       ? CachedNetworkImage(
-                          imageUrl: profile.fullAvatarUrl!,
-                          // Tambahkan cache manager untuk Avatar/Profil
+                          imageUrl: profile.fullAvatarUrl!, // mengambilobjek dan menampilkan avatar
                           cacheManager: ProfileCacheManager.instance,
                           width: 100,
                           height: 100,
@@ -849,16 +852,16 @@ class _UserProfileContentState extends State<_UserProfileContent>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              profile.displayName,
+              profile.displayName, // menampilkan nama
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (profile.isVerified) const VerifiedBadge(size: 22),
+            if (profile.isVerified) const VerifiedBadge(size: 22), // menampilkan badge jika verified
           ],
         ),
         Text(
-          '@${profile.username}',
+          '@${profile.username}', // menampilkan username
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
@@ -930,13 +933,13 @@ class _UserProfileContentState extends State<_UserProfileContent>
             children: [
               _buildStatColumn(
                 context,
-                '${profile.stats.posts}',
+                '${profile.stats.posts}', // menampilkan data jumlah post
                 'Postingan',
                 null,
               ),
               _buildStatColumn(
                 context,
-                '${profile.stats.followers}',
+                '${profile.stats.followers}', // menampilkan data jumlah follower
                 'Pengikut',
                 () => Navigator.push(
                   context,
@@ -951,7 +954,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
               ),
               _buildStatColumn(
                 context,
-                '${profile.stats.following}',
+                '${profile.stats.following}', // menampikan data jumlah following
                 'Mengikuti',
                 () => Navigator.push(
                   context,

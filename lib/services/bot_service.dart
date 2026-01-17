@@ -4,7 +4,7 @@ import '../services/api_config.dart';
 
 class BotService {
   Future<http.StreamedResponse> streamChat(String message, String history, String token) async {
-    final request = http.Request('POST', Uri.parse('${ApiConfig.baseUrl}/api/bot/send')); // <--- PERBAIKAN DI SINI
+    final request = http.Request('POST', Uri.parse('${ApiConfig.baseUrl}/api/bot/send'));
     request.headers['Authorization'] = 'Bearer $token';
     request.headers['Content-Type'] = 'application/json';
     request.body = jsonEncode({

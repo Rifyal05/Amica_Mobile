@@ -38,8 +38,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" android:host="192.168.1.10" />
-                <data android:scheme="https" android:host="192.168.1.10" />
+                <data android:scheme="http" android:host="withamica.my.id" />
+                <data android:scheme="https" android:host="withamica.my.id" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
@@ -48,8 +48,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <!-- Ganti host dengan IP server backend kamu atau domain asli nanti -->
-                <data android:scheme="http" android:host="192.168.1.10" android:pathPrefix="/post/" />
-                <data android:scheme="https" android:host="192.168.1.10" android:pathPrefix="/post/" />
+                <data android:scheme="http" android:host="withamica.my.id" android:pathPrefix="/post/" />
+                <data android:scheme="https" android:host="withamica.my.id" android:pathPrefix="/post/" />
             </intent-filter>
 
             <!-- Intent Filter untuk Custom Scheme (Backup) -->

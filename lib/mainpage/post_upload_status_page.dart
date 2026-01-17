@@ -21,8 +21,9 @@ class PostUploadStatusPage extends StatefulWidget {
 }
 
 class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
-  String _status = 'uploading'; // uploading, approved, rejected, error
+  String _status = 'uploading';
   String? _errorMessage;
+  Map<String, dynamic>? _moderationDetails;
 
   @override
   void initState() {
@@ -38,6 +39,11 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
       imageFile: widget.imageFile,
     );
 
+    debugPrint("=== DEBUG HASIL UPLOAD ===");
+    debugPrint("Raw Result: $result");
+    debugPrint("Moderation Details: ${result['moderation_details']}");
+    debugPrint("==========================");
+
     if (!mounted) return;
 
     setState(() {
@@ -46,6 +52,8 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
       } else if (result['is_moderated'] == true) {
         _status = 'rejected';
         _errorMessage = result['message'];
+        // Jika di log muncul datanya tapi di UI null, berarti key di bawah ini harus dipastikan sama
+        _moderationDetails = result['moderation_details'];
       } else {
         _status = 'error';
         _errorMessage = result['message'];
@@ -111,21 +119,81 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
       subtitle = "Mohon tunggu sebentar, kami sedang memproses postingan Anda.";
     } else if (_status == 'approved') {
       title = "Berhasil Terbit!";
-      subtitle = "Postingan Anda sudah tayang dan dapat dilihat oleh komunitas.";
+      subtitle =
+          "Postingan Anda sudah tayang dan dapat dilihat oleh komunitas.";
     } else if (_status == 'rejected') {
       title = "Postingan Ditahan";
-      subtitle = _errorMessage ?? "Konten Anda terdeteksi melanggar pedoman komunitas dan perlu ditinjau.";
+      subtitle =
+          _errorMessage ??
+          "Konten Anda terdeteksi melanggar pedoman komunitas.";
     } else {
       title = "Gagal Mengirim";
-      subtitle = _errorMessage ?? "Terjadi kesalahan koneksi. Silakan coba lagi nanti.";
+      subtitle =
+          _errorMessage ??
+          "Terjadi kesalahan koneksi. Silakan coba lagi nanti.";
     }
 
     return Column(
       children: [
-        Text(title, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 12),
-        Text(subtitle, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+        ),
+        if (_status == 'rejected' && _moderationDetails != null) ...[
+          const SizedBox(height: 20),
+          _buildModerationAnalysis(theme.colorScheme),
+        ],
       ],
+    );
+  }
+
+  Widget _buildModerationAnalysis(ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.error.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.error.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: _moderationDetails!.entries.map((entry) {
+          final value = entry.value.toString().toLowerCase();
+          final isSafe = value == 'safe' || value == 'SAFE';
+
+          if (isSafe) return const SizedBox.shrink();
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 14,
+                  color: colorScheme.error,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  "${entry.key.replaceAll('_', ' ').toUpperCase()}: ${entry.value.toString().toUpperCase()}",
+                  style: TextStyle(
+                    color: colorScheme.error,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -150,7 +218,10 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
             child: FilledButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ModerationListPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ModerationListPage()),
+                );
               },
               child: const Text("LIHAT STATUS MODERASI"),
             ),

@@ -4,6 +4,8 @@ import '../services/post_service.dart';
 
 class ModerationProvider with ChangeNotifier {
   final PostService _service = PostService();
+  final PostService _postService = PostService();
+
 
   List<Post> _moderatedPosts = [];
   bool _isLoading = false;
@@ -28,11 +30,13 @@ class ModerationProvider with ChangeNotifier {
   }
 
   Future<bool> acceptDecision(String postId) async {
-    final success = await _service.acknowledgeRejection(postId);
-    if (success) {
+    final result = await _postService.acknowledgeRejection(postId);
+
+    if (result['success']) {
       _moderatedPosts.removeWhere((p) => p.id == postId);
       notifyListeners();
+      return true;
     }
-    return success;
+    return false;
   }
 }

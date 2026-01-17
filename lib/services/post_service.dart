@@ -95,6 +95,7 @@ class PostService {
       });
       final response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         Post? fullPost;
         if (data['post_id'] != null) {
@@ -104,6 +105,7 @@ class PostService {
           'success': response.statusCode == 201,
           'is_moderated': data['status'] == 'rejected',
           'message': data['message'],
+          'moderation_details': data['moderation_details'],
           'post': fullPost,
         };
       } else if (response.statusCode == 403) {
@@ -111,7 +113,7 @@ class PostService {
           'success': false,
           'is_moderated': true,
           'message': data['error'] ?? 'Konten ditolak moderasi.',
-          'reason': data['reason'] ?? 'Konten melanggar aturan komunitas.',
+          'moderation_details': data['moderation_details'],
         };
       } else {
         return {
@@ -169,14 +171,23 @@ class PostService {
     }
   }
 
-  Future<bool> acknowledgeRejection(String postId) async {
+  Future<Map<String, dynamic>> acknowledgeRejection(String postId) async {
     try {
       final response = await _client.delete(
         Uri.parse('${ApiConfig.baseUrl}/api/posts/$postId/acknowledge'),
       );
-      return response.statusCode == 200;
+
+      return {
+        'success': response.statusCode == 200,
+        'statusCode': response.statusCode,
+        'body': response.body,
+      };
     } catch (e) {
-      return false;
+      return {
+        'success': false,
+        'statusCode': 500,
+        'error': e.toString(),
+      };
     }
   }
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/auth_provider.dart';
+import '../navigation/main_navigator.dart';
+import 'create_password_page.dart';
+import 'verify_pin.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -104,16 +107,31 @@ class _RegisterPageState extends State<RegisterPage> {
   void _handleGoogleRegister() async {
     setState(() => _isLoading = true);
     final authProvider = context.read<AuthProvider>();
-
     final result = await authProvider.loginWithGoogle();
 
     if (mounted) {
       setState(() => _isLoading = false);
       if (result['success'] == true) {
-        // Navigator.of(context).pushAndRemoveUntil(
-        //   MaterialPageRoute(builder: (context) => const MainNavigator()),
-        //       (Route<dynamic> route) => false,
-        // );
+        if (authProvider.needsPasswordSet) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const CreatePasswordPage()),
+            (Route<dynamic> route) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const MainNavigator()),
+            (Route<dynamic> route) => false,
+          );
+        }
+      } else if (result['status'] == 'pin_required') {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => VerifyPinPage(
+              tempId: result['temp_id'],
+              email: result['email'],
+            ),
+          ),
+        );
       } else {
         _showErrorSnackbar(result['message'] ?? 'Gagal daftar dengan Google');
       }
@@ -148,7 +166,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     const SizedBox(height: 30),
-
                     TextField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
@@ -161,7 +178,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -234,7 +250,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleRegister,
                       style: ElevatedButton.styleFrom(
@@ -251,9 +266,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     OutlinedButton(
                       onPressed: _isLoading ? null : _handleGoogleRegister,
                       style: OutlinedButton.styleFrom(
@@ -271,7 +284,6 @@ class _RegisterPageState extends State<RegisterPage> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
