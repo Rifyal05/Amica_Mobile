@@ -22,6 +22,7 @@ class ChatProvider with ChangeNotifier {
   bool _isLoading = false;
 
   Function(String, String, String)? onModerationBlocked;
+  Function(String, String)? onModerationWarning;
 
   List<ChatRoom> get inbox => _inbox;
   bool get isLoading => _isLoading;
@@ -190,8 +191,8 @@ class ChatProvider with ChangeNotifier {
     socket!.on('new_message', (data) {
       final newMessage = ChatMessage.fromJson(data);
       final currentList = _messagesCache[newMessage.chatId] ?? [];
-
-      if (newMessage.senderId != _myUserId) {
+      if (newMessage.senderId != _myUserId &&
+          !newMessage.id.startsWith('temp_')) {
         socket!.emit('message_received', {
           'message_id': newMessage.id,
           'chat_id': newMessage.chatId,
@@ -273,7 +274,7 @@ class ChatProvider with ChangeNotifier {
         final messages = _messagesCache[chatId]!;
         final idx = messages.indexWhere((m) => m.id == msgId);
         if (idx != -1) {
-          _messagesCache[chatId]![idx] = messages[idx].copyWith(isDelivered: true);
+          messages[idx] = messages[idx].copyWith(isDelivered: true);
           notifyListeners();
         }
       }
@@ -300,6 +301,12 @@ class ChatProvider with ChangeNotifier {
         );
       }
       fetchInbox();
+    });
+
+    socket!.on('moderation_warning', (data) {
+      if (onModerationWarning != null) {
+        onModerationWarning!(data['chat_id'], data['warning']);
+      }
     });
 
     socket!.connect();

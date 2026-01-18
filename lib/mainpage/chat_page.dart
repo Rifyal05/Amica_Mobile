@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:amica/mainpage/widgets/verified_badge.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
@@ -61,6 +60,12 @@ class _ChatPageState extends State<ChatPage> {
         chatProv.socket?.emit('join_chat', {'chat_id': widget.chatId});
       }
       chatProv.markChatAsRead(widget.chatId);
+
+      chatProv.onModerationWarning = (chatId, warning) {
+        if (chatId == widget.chatId && mounted) {
+          _showTopSnackbar(warning, isError: true);
+        }
+      };
     });
   }
 
@@ -95,7 +100,7 @@ class _ChatPageState extends State<ChatPage> {
           left: 16,
           right: 16,
         ),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -327,6 +332,18 @@ class _ChatPageState extends State<ChatPage> {
     final bool hasImage =
         widget.chatImage != null && widget.chatImage!.isNotEmpty;
 
+    // Mengambil style text dari tema
+    final titleStyle = theme.textTheme.titleMedium?.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    );
+    final subtitleStyle = theme.textTheme.bodySmall?.copyWith(fontSize: 11);
+    final typingStyle = theme.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      color: Colors.green,
+      fontStyle: FontStyle.italic,
+    );
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
@@ -377,10 +394,7 @@ class _ChatPageState extends State<ChatPage> {
                               Flexible(
                                 child: Text(
                                   widget.chatName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: titleStyle,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -393,19 +407,14 @@ class _ChatPageState extends State<ChatPage> {
                               widget.isGroup
                                   ? "$typingUser mengetik..."
                                   : "Sedang mengetik...",
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.green,
-                                fontStyle: FontStyle.italic,
-                              ),
+                              style: typingStyle,
                             )
                           else
                             Text(
                               widget.isGroup
                                   ? "Ketuk untuk info grup"
                                   : "Ketuk untuk lihat profil",
-                              style: const TextStyle(
-                                fontSize: 11,
+                              style: subtitleStyle?.copyWith(
                                 color: Colors.grey,
                               ),
                             ),
@@ -465,10 +474,12 @@ class _ChatPageState extends State<ChatPage> {
                   }
 
                   if (messages.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Text(
                         "Mulai percakapan...",
-                        style: TextStyle(color: Colors.grey),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey,
+                        ),
                       ),
                     );
                   }
@@ -499,7 +510,7 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                             child: Text(
                               msg.text ?? "",
-                              style: const TextStyle(
+                              style: theme.textTheme.bodySmall?.copyWith(
                                 fontSize: 11,
                                 color: Colors.black54,
                               ),
@@ -588,7 +599,7 @@ class _ChatPageState extends State<ChatPage> {
                         children: [
                           Text(
                             "Membalas ${_replyingTo!.senderName ?? 'Unknown'}",
-                            style: TextStyle(
+                            style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.primaryColor,
                             ),
@@ -597,6 +608,9 @@ class _ChatPageState extends State<ChatPage> {
                             _replyingTo!.text ?? "...",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -615,10 +629,10 @@ class _ChatPageState extends State<ChatPage> {
                 color: Colors.red.withOpacity(0.1),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       "Akun ini telah terblokir. Anda mungkin telah memblokir akun ini atau jika anda tidak merasa melakukannya, sistem moderasi mungkin telah memblokirnya untuk anda.",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -655,8 +669,12 @@ class _ChatPageState extends State<ChatPage> {
                   onChanged: _onTextChanged,
                   minLines: 1,
                   maxLines: 4,
+                  style: theme.textTheme.bodyMedium, // Ikut style text input
                   decoration: InputDecoration(
                     hintText: 'Ketik pesan...',
+                    hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                     filled: true,
                     fillColor: theme.colorScheme.surface,
                     border: OutlineInputBorder(
@@ -688,22 +706,21 @@ class _DateChip extends StatelessWidget {
   const _DateChip({required this.text});
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           text,
-          style: TextStyle(
+          style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ),
@@ -845,9 +862,9 @@ class _InviteCardState extends State<_InviteCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "Undangan Grup Amica",
-                      style: TextStyle(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 10,
                         color: Colors.grey,
                         fontWeight: FontWeight.bold,
@@ -856,7 +873,7 @@ class _InviteCardState extends State<_InviteCard> {
                     const SizedBox(height: 2),
                     Text(
                       _groupName,
-                      style: TextStyle(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                         color: widget.isMe
@@ -869,7 +886,7 @@ class _InviteCardState extends State<_InviteCard> {
                     if (!_isLoading && !_isInvalid)
                       Text(
                         "$_memberCount Anggota",
-                        style: TextStyle(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 11,
                           color: widget.isMe ? Colors.white70 : Colors.grey,
                         ),
@@ -952,6 +969,12 @@ class _MessageBubble extends StatelessWidget {
   Widget _buildMessageContent(BuildContext context, ThemeData theme) {
     final text = msg.text ?? "";
 
+    // PENTING: Gunakan copyWith dari theme.textTheme untuk mewarisi font global
+    final messageStyle = theme.textTheme.bodyLarge?.copyWith(
+      color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+      fontSize: 15,
+    );
+
     return Linkify(
       onOpen: (link) async {
         final uri = Uri.parse(link.url);
@@ -960,13 +983,10 @@ class _MessageBubble extends StatelessWidget {
         }
       },
       text: text,
-      style: TextStyle(
-        color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
-        fontSize: 15,
-      ),
-      linkStyle: TextStyle(
+      style: messageStyle, // Terapkan style disini
+      linkStyle: messageStyle?.copyWith(
         color: isMe ? Colors.white : Colors.blue,
-        decoration: TextDecoration.none,
+        decoration: TextDecoration.underline,
         fontWeight: FontWeight.bold,
       ),
       options: const LinkifyOptions(humanize: false),
@@ -1028,7 +1048,7 @@ class _MessageBubble extends StatelessWidget {
                           Flexible(
                             child: Text(
                               msg.senderName!,
-                              style: TextStyle(
+                              style: theme.textTheme.bodyMedium?.copyWith(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.primary,
@@ -1063,7 +1083,7 @@ class _MessageBubble extends StatelessWidget {
                         children: [
                           Text(
                             msg.replyTo!['sender_name'],
-                            style: TextStyle(
+                            style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                               color: theme.primaryColor,
@@ -1073,7 +1093,9 @@ class _MessageBubble extends StatelessWidget {
                             msg.replyTo!['text'],
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 11),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -1101,14 +1123,18 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
                   child: msg.isDeleted
-                      ? const Row(
+                      ? Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.block, size: 16, color: Colors.grey),
-                            SizedBox(width: 4),
+                            const Icon(
+                              Icons.block,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
                               "Pesan ini telah dihapus",
-                              style: TextStyle(
+                              style: theme.textTheme.bodyMedium?.copyWith(
                                 fontStyle: FontStyle.italic,
                                 color: Colors.grey,
                               ),
@@ -1121,20 +1147,7 @@ class _MessageBubble extends StatelessWidget {
                                 isMe: isMe,
                                 currentChatId: currentChatId,
                               )
-                            : Linkify(
-                                onOpen: (l) => launchUrl(Uri.parse(l.url)),
-                                text: msg.text ?? "",
-                                style: TextStyle(
-                                  color: isMe
-                                      ? theme.colorScheme.onPrimary
-                                      : theme.colorScheme.onSurface,
-                                  fontSize: 15,
-                                ),
-                                linkStyle: TextStyle(
-                                  color: isMe ? Colors.white : Colors.blue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )),
+                            : _buildMessageContent(context, theme)),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 2, right: 2, left: 2),
@@ -1143,7 +1156,7 @@ class _MessageBubble extends StatelessWidget {
                     children: [
                       Text(
                         timeStr,
-                        style: TextStyle(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 10,
                           color: theme.colorScheme.onSurfaceVariant.withOpacity(
                             0.7,

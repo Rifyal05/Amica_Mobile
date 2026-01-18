@@ -140,9 +140,11 @@ class _EducativePageState extends State<Educative>
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          _filters = List<String>.from(data);
-        });
+        if (mounted) {
+          setState(() {
+            _filters = List<String>.from(data);
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error categories: $e");
@@ -159,10 +161,12 @@ class _EducativePageState extends State<Educative>
         final List<Article> loaded = (data['articles'] as List)
             .map((json) => Article.fromJson(json))
             .toList();
-        setState(() {
-          _featuredArticles = loaded;
-          _startSliderTimer();
-        });
+        if (mounted) {
+          setState(() {
+            _featuredArticles = loaded;
+            _startSliderTimer();
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error fetching featured: $e");
@@ -170,6 +174,7 @@ class _EducativePageState extends State<Educative>
   }
 
   Future<void> _fetchFirstBatch() async {
+    if (!mounted) return;
     setState(() {
       _isFirstLoadRunning = true;
       _errorMessage = '';
@@ -189,18 +194,41 @@ class _EducativePageState extends State<Educative>
           hasNext = loaded.length == _limit;
         }
 
-        setState(() {
-          _articles = loaded;
-          _hasNextPage = hasNext;
-          _page = 1;
-        });
+        if (mounted) {
+          setState(() {
+            _articles = loaded;
+            _hasNextPage = hasNext;
+            _page = 1;
+          });
+        }
       } else {
-        setState(() => _errorMessage = "Server Error: ${response.statusCode}");
+        if (mounted) {
+          setState(
+            () => _errorMessage =
+                "Gagal memuat data (Server ${response.statusCode})",
+          );
+        }
       }
     } catch (e) {
-      setState(() => _errorMessage = "Gagal memuat data: ${e.toString()}");
+      String errorStr = e.toString().toLowerCase();
+      String friendlyMsg = "Terjadi kesalahan saat memuat data.";
+
+      if (errorStr.contains('socketexception') ||
+          errorStr.contains('connection refused') ||
+          errorStr.contains('network is unreachable') ||
+          errorStr.contains('clientexception')) {
+        friendlyMsg = "Tidak ada koneksi internet.\nPeriksa jaringan Anda.";
+      } else if (errorStr.contains('timeout')) {
+        friendlyMsg = "Waktu koneksi habis.\nSilakan coba lagi.";
+      }
+
+      if (mounted) {
+        setState(() => _errorMessage = friendlyMsg);
+      }
     } finally {
-      setState(() => _isFirstLoadRunning = false);
+      if (mounted) {
+        setState(() => _isFirstLoadRunning = false);
+      }
     }
   }
 
@@ -222,19 +250,26 @@ class _EducativePageState extends State<Educative>
           hasNext = newArts.length == _limit;
         }
 
-        setState(() {
-          _page++;
-          _articles.addAll(newArts);
-          _hasNextPage = hasNext;
-        });
+        if (mounted) {
+          setState(() {
+            _page++;
+            _articles.addAll(newArts);
+            _hasNextPage = hasNext;
+          });
+        }
       }
     } catch (_) {
     } finally {
-      setState(() => _isLoadMoreRunning = false);
+      if (mounted) {
+        setState(() => _isLoadMoreRunning = false);
+      }
     }
   }
 
   Future<void> _handleRefresh() async {
+    setState(() {
+      _errorMessage = '';
+    });
     await _fetchCategories();
     await _fetchFeaturedArticles();
     _page = 1;

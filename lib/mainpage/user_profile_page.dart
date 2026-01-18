@@ -96,7 +96,6 @@ class _UserProfileContentState extends State<_UserProfileContent>
     }
   }
 
-  // 1
   void _loadData() {
     final authProvider = context.read<AuthProvider>();
     final profileProvider = context.read<ProfileProvider>();
@@ -145,9 +144,13 @@ class _UserProfileContentState extends State<_UserProfileContent>
 
     final authProvider = context.read<AuthProvider>();
     final currentUserId = authProvider.currentUser?.id ?? '';
+    final String targetId = widget.userId ?? widget.user?.id ?? currentUserId;
+
+    context.read<ProfileProvider>().errorMessage = null;
 
     await context.read<ProfileProvider>().refreshProfile(
       currentUserId: currentUserId,
+      targetUserId: targetId,
     );
 
     if (mounted) setState(() => _isRefreshing = false);
@@ -169,6 +172,28 @@ class _UserProfileContentState extends State<_UserProfileContent>
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
     );
+  }
+
+  Future<void> _handleUnblockUser(String targetId) async {
+    final success = await _userService.unblockUser(targetId);
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Blokir berhasil dibuka. Memuat ulang profil..."),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _onRefresh();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Gagal membuka blokir."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _confirmBlockUser() async {
@@ -336,13 +361,12 @@ class _UserProfileContentState extends State<_UserProfileContent>
     );
   }
 
-  // 2
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final provider = context.watch<ProfileProvider>(); // memanggil dana mendengarkan provider
-    final profile = provider.userProfile; // mengambil objek
+    final provider = context.watch<ProfileProvider>();
+    final profile = provider.userProfile;
     final bool canGoBack = Navigator.of(context).canPop();
     final bool isInitialLoading = provider.isLoadingProfile && profile == null;
 
@@ -363,10 +387,16 @@ class _UserProfileContentState extends State<_UserProfileContent>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(provider.errorMessage ?? "Gagal memuat profil."),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _onRefresh,
-                child: const Text("Coba Lagi"),
+                child: provider.isLoadingProfile
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Coba Lagi"),
               ),
             ],
           ),
@@ -480,7 +510,6 @@ class _UserProfileContentState extends State<_UserProfileContent>
                         ),
                       ),
                     if (canGoBack && !isMe) const SizedBox(width: 8),
-                    // scroll ke atas
                     GestureDetector(
                       onTap: _scrollToTop,
                       child: Container(
@@ -506,7 +535,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ),
     );
   }
-// 4
+
   Widget _buildImageGridTab(ProfileProvider provider) {
     if (provider.imagePosts.isEmpty && !provider.isLoadingPosts) {
       return _buildEmptyState(
@@ -519,7 +548,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (provider.userProfile!.status.isMe)
-          SliverToBoxAdapter(child: _buildCreatePostButton()), // menampilkan tombol post
+          SliverToBoxAdapter(child: _buildCreatePostButton()),
         SliverPadding(
           padding: const EdgeInsets.all(2),
           sliver: SliverGrid(
@@ -530,7 +559,6 @@ class _UserProfileContentState extends State<_UserProfileContent>
               childAspectRatio: 1,
             ),
             delegate: SliverChildBuilderDelegate((context, index) {
-              // menampilkan image post user
               final post = provider.imagePosts[index];
               return InkWell(
                 onTap: () {
@@ -564,7 +592,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ],
     );
   }
-// menampilkan text post
+
   Widget _buildTextListTab(ProfileProvider provider) {
     if (provider.textPosts.isEmpty && provider.isLoadingProfile) {
       return const Center(child: CircularProgressIndicator());
@@ -595,7 +623,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ],
     );
   }
-// menampilkan post tab
+
   Widget _buildSavedPostsTab(ProfileProvider provider, bool isMe) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -651,7 +679,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
                     value: provider.myPrivacySetting,
                     activeThumbColor: colorScheme.primary,
                     onChanged: (val) async {
-                      bool success = await provider.togglePrivacySetting(val); // mengubah visibilitas
+                      bool success = await provider.togglePrivacySetting(val);
                       if (!success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -791,13 +819,13 @@ class _UserProfileContentState extends State<_UserProfileContent>
       ),
     );
   }
-// 3
+
   Widget _buildProfileDetails(BuildContext context, UserProfileData profile) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final bool isMe = profile.status.isMe;
+    final bool isBlocked = profile.status.isBlocked;
 
-    // NAMPILIN HALAMAN PROFIL
     return Column(
       children: [
         Stack(
@@ -807,7 +835,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
             SizedBox(
               height: 160,
               width: double.infinity,
-              child: profile.fullBannerUrl != null  // mengambil data dari objek dan menampilkan banner
+              child: profile.fullBannerUrl != null
                   ? _buildNetworkImage(profile.fullBannerUrl!)
                   : Container(color: Colors.grey.shade300),
             ),
@@ -824,7 +852,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
                 child: ClipOval(
                   child: profile.fullAvatarUrl != null
                       ? CachedNetworkImage(
-                          imageUrl: profile.fullAvatarUrl!, // mengambilobjek dan menampilkan avatar
+                          imageUrl: profile.fullAvatarUrl!,
                           cacheManager: ProfileCacheManager.instance,
                           width: 100,
                           height: 100,
@@ -852,16 +880,16 @@ class _UserProfileContentState extends State<_UserProfileContent>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              profile.displayName, // menampilkan nama
+              profile.displayName,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (profile.isVerified) const VerifiedBadge(size: 22), // menampilkan badge jika verified
+            if (profile.isVerified) const VerifiedBadge(size: 22),
           ],
         ),
         Text(
-          '@${profile.username}', // menampilkan username
+          '@${profile.username}',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
@@ -933,13 +961,13 @@ class _UserProfileContentState extends State<_UserProfileContent>
             children: [
               _buildStatColumn(
                 context,
-                '${profile.stats.posts}', // menampilkan data jumlah post
+                '${profile.stats.posts}',
                 'Postingan',
                 null,
               ),
               _buildStatColumn(
                 context,
-                '${profile.stats.followers}', // menampilkan data jumlah follower
+                '${profile.stats.followers}',
                 'Pengikut',
                 () => Navigator.push(
                   context,
@@ -954,7 +982,7 @@ class _UserProfileContentState extends State<_UserProfileContent>
               ),
               _buildStatColumn(
                 context,
-                '${profile.stats.following}', // menampikan data jumlah following
+                '${profile.stats.following}',
                 'Mengikuti',
                 () => Navigator.push(
                   context,
@@ -975,37 +1003,53 @@ class _UserProfileContentState extends State<_UserProfileContent>
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Row(
             children: [
-              Expanded(
-                flex: 3,
-                child: isMe
-                    ? FilledButton.icon(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => EditProfilePage(profile: profile),
-                          ),
-                        ),
-                        icon: const Icon(Icons.edit),
-                        label: const Text("Edit Profil"),
-                      )
-                    : FilledButton(
-                        onPressed: () =>
-                            context.read<ProfileProvider>().toggleFollow(),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: profile.status.isFollowing
-                              ? colorScheme.surfaceContainerHighest
-                              : colorScheme.primary,
-                          foregroundColor: profile.status.isFollowing
-                              ? colorScheme.onSurface
-                              : colorScheme.onPrimary,
-                        ),
-                        child: Text(
-                          profile.status.isFollowing ? "Mengikuti" : "Ikuti",
-                        ),
+              if (isMe)
+                Expanded(
+                  flex: 3,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EditProfilePage(profile: profile),
                       ),
-              ),
+                    ),
+                    icon: const Icon(Icons.edit),
+                    label: const Text("Edit Profil"),
+                  ),
+                )
+              else if (isBlocked)
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _handleUnblockUser(profile.id),
+                    icon: const Icon(Icons.lock_open),
+                    label: const Text("Buka Blokir"),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.error,
+                      foregroundColor: colorScheme.onError,
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  flex: 3,
+                  child: FilledButton(
+                    onPressed: () =>
+                        context.read<ProfileProvider>().toggleFollow(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: profile.status.isFollowing
+                          ? colorScheme.surfaceContainerHighest
+                          : colorScheme.primary,
+                      foregroundColor: profile.status.isFollowing
+                          ? colorScheme.onSurface
+                          : colorScheme.onPrimary,
+                    ),
+                    child: Text(
+                      profile.status.isFollowing ? "Mengikuti" : "Ikuti",
+                    ),
+                  ),
+                ),
               const SizedBox(width: 12),
-              if (!isMe) ...[
+              if (!isMe && !isBlocked)
                 Expanded(
                   flex: 3,
                   child: OutlinedButton(
@@ -1013,12 +1057,13 @@ class _UserProfileContentState extends State<_UserProfileContent>
                     child: const Text('Kirim Pesan'),
                   ),
                 ),
-                const SizedBox(width: 12),
+              if (!isMe && !isBlocked) const SizedBox(width: 12),
+              if (!isMe && !isBlocked)
                 IconButton(
                   onPressed: _showUserMenu,
                   icon: const Icon(Icons.more_vert),
-                ),
-              ] else ...[
+                )
+              else if (isMe)
                 FilledButton.tonal(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -1029,7 +1074,6 @@ class _UserProfileContentState extends State<_UserProfileContent>
                   ),
                   child: const Icon(Icons.settings_outlined),
                 ),
-              ],
             ],
           ),
         ),

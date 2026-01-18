@@ -17,16 +17,13 @@ class UserService {
   }
 
   Future<UserProfileData?> getUserProfile(String userId) async {
-    try {
-      final response = await _client.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/users/$userId'),
-      );
+    final response = await _client.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/users/$userId'),
+    );
 
-      if (response.statusCode == 200) {
-        return UserProfileData.fromJson(jsonDecode(response.body));
-      }
-      return null;
-    } catch (e) {
+    if (response.statusCode == 200) {
+      return UserProfileData.fromJson(jsonDecode(response.body));
+    } else {
       return null;
     }
   }

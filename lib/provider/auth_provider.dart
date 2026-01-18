@@ -1,10 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'dart:convert';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../models/user_model.dart';
+import '../models/user_profile_model.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -14,16 +15,29 @@ class AuthProvider with ChangeNotifier {
   User? _currentUser;
   String? _token;
   bool _needsPasswordSet = false;
+  List<String> _blockedUserIds = [];
 
   bool get isLoggedIn => _isLoggedIn;
   User? get currentUser => _currentUser;
   String? get token => _token;
   bool get needsPasswordSet => _needsPasswordSet;
+  List<String> get blockedUserIds => _blockedUserIds;
 
   AuthProvider() {
     AuthService.sessionExpiredStream.listen((_) {
       performLogout();
     });
+  }
+
+  Future<void> loadBlockedUserIds() async {
+    if (!isLoggedIn) return;
+    try {
+      final blockedUsers = await _userService.getBlockedUsers();
+      _blockedUserIds = blockedUsers.map((u) => u.id).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error loading blocked users: $e");
+    }
   }
 
   void updateUser(User newUser) {
@@ -74,6 +88,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
 
       await refreshCurrentUser();
+      await loadBlockedUserIds();
       await _syncOneSignalId();
     } else {
       _isLoggedIn = false;
@@ -86,8 +101,10 @@ class AuthProvider with ChangeNotifier {
     if (_token == null) return;
 
     final updatedUser = await _authService.fetchCurrentUser(_token!);
+
     if (updatedUser != null) {
       _currentUser = updatedUser;
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_data', jsonEncode(_currentUser!.toJson()));
       notifyListeners();
@@ -133,6 +150,8 @@ class AuthProvider with ChangeNotifier {
       await prefs.setBool('needs_password_set', false);
 
       notifyListeners();
+      await refreshCurrentUser();
+      await loadBlockedUserIds();
       await _syncOneSignalId();
 
       return {'success': true};
@@ -164,6 +183,8 @@ class AuthProvider with ChangeNotifier {
       await prefs.setBool('needs_password_set', _needsPasswordSet);
 
       notifyListeners();
+      await refreshCurrentUser();
+      await loadBlockedUserIds();
       await _syncOneSignalId();
 
       return {'success': true};
@@ -195,6 +216,8 @@ class AuthProvider with ChangeNotifier {
       await prefs.setBool('needs_password_set', false);
 
       notifyListeners();
+      await refreshCurrentUser();
+      await loadBlockedUserIds();
       await _syncOneSignalId();
       return null;
     }
@@ -205,7 +228,11 @@ class AuthProvider with ChangeNotifier {
     if (_token == null) return "Token tidak valid";
     final result = await _authService.setPin(pin, _token!);
     if (result['success']) {
-      await refreshCurrentUser();
+      if (_currentUser != null) {
+        _currentUser = _currentUser!.copyWith(hasPin: true);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_data', jsonEncode(_currentUser!.toJson()));
+      }
       return null;
     }
     return result['message'];
@@ -215,7 +242,11 @@ class AuthProvider with ChangeNotifier {
     if (_token == null) return "Token tidak valid";
     final result = await _authService.removePin(currentPin, _token!);
     if (result['success']) {
-      await refreshCurrentUser();
+      if (_currentUser != null) {
+        _currentUser = _currentUser!.copyWith(hasPin: false);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_data', jsonEncode(_currentUser!.toJson()));
+      }
       return null;
     }
     return result['message'];
@@ -276,6 +307,20 @@ class AuthProvider with ChangeNotifier {
     return result['message'];
   }
 
+  Future<void> toggleModeration(bool enabled) async {
+    if (_currentUser == null) return;
+    final success = await _userService.updateModerationSetting(enabled);
+    if (success) {
+      final updatedUser = _currentUser!.copyWith(
+        isAiModerationEnabled: enabled,
+      );
+      _currentUser = updatedUser;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_data', jsonEncode(_currentUser!.toJson()));
+      notifyListeners();
+    }
+  }
+
   Future<void> performLogout() async {
     OneSignal.logout();
     await _authService.logout();
@@ -287,6 +332,7 @@ class AuthProvider with ChangeNotifier {
     _currentUser = null;
     _token = null;
     _needsPasswordSet = false;
+    _blockedUserIds = [];
 
     notifyListeners();
   }

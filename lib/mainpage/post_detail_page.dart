@@ -9,6 +9,7 @@ import '../provider/auth_provider.dart';
 import '../provider/comment_provider.dart';
 import '../provider/post_provider.dart';
 import '../services/report_serices.dart';
+import '../services/user_service.dart';
 import 'helper/utils_helper.dart';
 import 'widgets/post_card.dart';
 import 'user_profile_page.dart';
@@ -34,17 +35,21 @@ class _PostDetailPageState extends State<PostDetailPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CommentProvider>().loadComments(widget.post.id);
+      context.read<AuthProvider>().loadBlockedUserIds();
     });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _commentController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
   Future<void> _onRefresh() async {
     await context.read<CommentProvider>().loadComments(widget.post.id);
+    context.read<AuthProvider>().loadBlockedUserIds();
   }
 
   void _startReply(Comment comment) {
@@ -163,12 +168,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final commentProvider = context.watch<CommentProvider>();
+    final authProvider = context.watch<AuthProvider>();
     final livePost = context.select<PostProvider, Post>(
       (p) => p.posts.firstWhere(
         (element) => element.id == widget.post.id,
         orElse: () => widget.post,
       ),
     );
+    final blockedUserIds = authProvider.blockedUserIds;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -237,6 +244,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           comment: comment,
                           onReply: _startReply,
                           postId: widget.post.id,
+                          blockedUserIds: blockedUserIds,
                         );
                       }, childCount: commentProvider.comments.length),
                     ),
@@ -412,11 +420,13 @@ class _CommentTree extends StatefulWidget {
   final Comment comment;
   final Function(Comment) onReply;
   final String postId;
+  final List<String> blockedUserIds;
 
   const _CommentTree({
     required this.comment,
     required this.onReply,
     required this.postId,
+    required this.blockedUserIds,
   });
 
   @override
@@ -426,6 +436,8 @@ class _CommentTree extends StatefulWidget {
 class _CommentTreeState extends State<_CommentTree> {
   int _visibleRepliesCount = 1;
   static const int _batchSize = 10;
+  final UserService _userService = UserService();
+  final ReportService _reportService = ReportService();
 
   List<Comment> _getAllDescendants(Comment parent) {
     List<Comment> all = [];
@@ -457,7 +469,6 @@ class _CommentTreeState extends State<_CommentTree> {
   }
 
   void _showCommentMenu(Comment comment, User? currentUser) {
-    final ReportService reportService = ReportService();
     bool isMyComment = currentUser?.id == comment.user.id;
 
     showModalBottomSheet(
@@ -533,7 +544,7 @@ class _CommentTreeState extends State<_CommentTree> {
                       const SnackBar(content: Text("Mengirim laporan...")),
                     );
 
-                    final result = await reportService.submitReport(
+                    final result = await _reportService.submitReport(
                       targetType: 'comment',
                       targetId: comment.id,
                       reason: reason,
@@ -595,6 +606,19 @@ class _CommentTreeState extends State<_CommentTree> {
     return DateFormat('d MMM yy').format(timestamp);
   }
 
+  Future<void> _handleUnblock(String userId) async {
+    final success = await _userService.unblockUser(userId);
+    if (mounted && success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Blokir dibuka. Memuat ulang komentar..."),
+        ),
+      );
+      context.read<CommentProvider>().loadComments(widget.postId);
+      context.read<AuthProvider>().loadBlockedUserIds();
+    }
+  }
+
   Widget _buildCommentTile(
     Comment comment,
     ThemeData theme, {
@@ -602,6 +626,24 @@ class _CommentTreeState extends State<_CommentTree> {
   }) {
     final avatarUrl = _getAvatarUrl(comment.user.avatarUrl);
     final currentUser = context.read<AuthProvider>().currentUser;
+    final bool isAuthorBlocked = widget.blockedUserIds.contains(
+      comment.user.id,
+    );
+
+    if (isAuthorBlocked) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: isReply ? 48.0 : 16.0,
+          right: 16.0,
+          top: 8.0,
+          bottom: 8.0,
+        ),
+        child: _BlockedCommentView(
+          comment: comment,
+          onUnblock: () => _handleUnblock(comment.user.id),
+        ),
+      );
+    }
 
     String commentText = comment.text.trim();
     Comment? contextComment;
@@ -623,7 +665,12 @@ class _CommentTreeState extends State<_CommentTree> {
       child: InkWell(
         onTap: () => widget.onReply(comment),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: EdgeInsets.only(
+            left: isReply ? 48.0 : 16.0,
+            right: 16.0,
+            top: 8.0,
+            bottom: 8.0,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -750,16 +797,21 @@ class _CommentTreeState extends State<_CommentTree> {
     final shownReplies = allReplies.take(_visibleRepliesCount).toList();
     final remainingCount = totalReplies - shownReplies.length;
 
+    final isRootBlocked = widget.blockedUserIds.contains(
+      widget.comment.user.id,
+    );
+
+    if (isRootBlocked) {
+      return _buildCommentTile(widget.comment, theme);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildCommentTile(widget.comment, theme),
         if (totalReplies > 0) ...[
           ...shownReplies.map(
-            (reply) => Padding(
-              padding: const EdgeInsets.only(left: 48.0),
-              child: _buildCommentTile(reply, theme, isReply: true),
-            ),
+            (reply) => _buildCommentTile(reply, theme, isReply: true),
           ),
           Padding(
             padding: const EdgeInsets.only(left: 60.0, bottom: 8.0, top: 4.0),
@@ -808,6 +860,85 @@ class _CommentTreeState extends State<_CommentTree> {
           color: theme.colorScheme.outlineVariant.withOpacity(0.1),
         ),
       ],
+    );
+  }
+}
+
+class _BlockedCommentView extends StatefulWidget {
+  final Comment comment;
+  final VoidCallback onUnblock;
+  const _BlockedCommentView({required this.comment, required this.onUnblock});
+
+  @override
+  State<_BlockedCommentView> createState() => __BlockedCommentViewState();
+}
+
+class __BlockedCommentViewState extends State<_BlockedCommentView> {
+  bool _isVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.visibility_off,
+                size: 18,
+                color: theme.colorScheme.onErrorContainer,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "${widget.comment.user.displayName} (Diblokir)",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () => setState(() => _isVisible = !_isVisible),
+                child: Text(
+                  _isVisible ? "Sembunyikan" : "Tampilkan",
+                  style: TextStyle(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_isVisible) ...[
+            const SizedBox(height: 8),
+            Text(
+              widget.comment.text,
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: widget.onUnblock,
+              child: const Text("Buka Blokir Penulis Komentar"),
+            ),
+          ] else if (!_isVisible)
+            Text(
+              "Komentar disembunyikan karena penulis diblokir.",
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onErrorContainer.withOpacity(0.8),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -218,9 +218,9 @@ class AuthService {
 
   // REMOVE PIN
   Future<Map<String, dynamic>> removePin(
-    String currentPin,
-    String token,
-  ) async {
+      String currentPin,
+      String token,
+      ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/remove-pin'),
@@ -230,16 +230,23 @@ class AuthService {
         },
         body: jsonEncode({'current_pin': currentPin}),
       );
-      final data = jsonDecode(response.body);
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        return {'success': false, 'message': 'Kesalahan format server (Status: ${response.statusCode})'};
+      }
+
+
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       }
       return {
         'success': false,
-        'message': data['error'] ?? 'Gagal menghapus PIN',
+        'message': data['error'] ?? 'Gagal menghapus PIN (Error tidak terdefinisi)',
       };
     } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
+      return {'success': false, 'message': 'Error koneksi: $e'};
     }
   }
 

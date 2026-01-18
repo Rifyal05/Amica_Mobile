@@ -38,7 +38,11 @@ class ProfileProvider with ChangeNotifier {
   bool get isSavedCollectionPrivate => _isSavedCollectionPrivate;
   bool get myPrivacySetting => _myPrivacySetting;
 
-  // 1
+  set errorMessage(String? msg) {
+    _errorMessage = msg;
+    notifyListeners();
+  }
+
   Future<void> loadFullProfile(String userId, {String? currentUserId}) async {
     _targetUserId = userId;
     _isLoadingProfile = true;
@@ -49,7 +53,7 @@ class ProfileProvider with ChangeNotifier {
       _userProfile = await _userService.getUserProfile(userId);
 
       if (_userProfile == null) {
-        _errorMessage = "Gagal mengambil data profil.";
+        _errorMessage = "Profil pengguna tidak ditemukan.";
       } else {
         if (currentUserId != null &&
             currentUserId.isNotEmpty &&
@@ -80,11 +84,24 @@ class ProfileProvider with ChangeNotifier {
         _imagePosts = [];
         _textPosts = [];
         _hasMorePosts = true;
+
         await _fetchMorePosts();
       }
     } catch (e) {
-      _errorMessage = "Terjadi kesalahan koneksi.";
-      debugPrint(e.toString());
+      final errorStr = e.toString().toLowerCase();
+
+      if (errorStr.contains('socketexception') ||
+          errorStr.contains('connection refused') ||
+          errorStr.contains('network is unreachable') ||
+          errorStr.contains('clientexception')) {
+        _errorMessage = "Tidak ada koneksi internet. Periksa jaringan Anda.";
+      } else if (errorStr.contains('timeout')) {
+        _errorMessage = "Waktu koneksi habis. Silakan coba lagi.";
+      } else {
+        _errorMessage = "Terjadi kesalahan sistem. ($e)";
+      }
+
+      debugPrint("Profile Error: $e");
     }
 
     _isLoadingProfile = false;
@@ -201,12 +218,22 @@ class ProfileProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refreshProfile({String? currentUserId}) async {
+  Future<void> refreshProfile({
+    String? currentUserId,
+    String? targetUserId,
+  }) async {
+    final String idToLoad = targetUserId ?? _targetUserId;
+
     if (_userProfile != null) {
       await loadFullProfile(_userProfile!.id, currentUserId: currentUserId);
       await loadSavedPosts(_userProfile!.id);
-    } else if (_targetUserId.isNotEmpty) {
-      await loadFullProfile(_targetUserId, currentUserId: currentUserId);
+    } else if (idToLoad.isNotEmpty) {
+      await loadFullProfile(idToLoad, currentUserId: currentUserId);
+      await loadSavedPosts(idToLoad);
+    } else {
+      _errorMessage =
+          "Gagal memuat ulang. ID tidak ditemukan. Coba tutup dan buka ulang aplikasi";
+      notifyListeners();
     }
   }
 

@@ -29,6 +29,7 @@ import 'provider/sdq_provider.dart';
 import 'provider/bot_provider.dart';
 import 'provider/moderation_provider.dart';
 import 'theme/colors.dart';
+import 'services/chat_service.dart'; // Import ChatService
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -48,6 +49,10 @@ Future<void> main() async {
     final data = event.notification.additionalData;
 
     if (data != null) {
+      if (data['type'] == 'chat' && data.containsKey('message_id')) {
+        final msgId = data['message_id'];
+        ChatService().markDeliveredBackground(msgId);
+      }
       Future.delayed(const Duration(milliseconds: 500), () {
         final navigator = navigatorKey.currentState;
 

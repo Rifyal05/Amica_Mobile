@@ -98,14 +98,22 @@ class _SettingsPageState extends State<SettingsPage> {
           TextButton(
             onPressed: () async {
               if (controller.text.length < 4) return;
+
+              final messenger = ScaffoldMessenger.of(context);
+              final authProvider = context.read<AuthProvider>();
+
+              final err = await authProvider.setPin(controller.text);
+
               Navigator.pop(context);
-              final err = await context.read<AuthProvider>().setPin(
-                controller.text,
-              );
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(err ?? 'PIN Berhasil diaktifkan')),
+
+              if (err == null) {
+                await authProvider.refreshCurrentUser();
+                authProvider.notifyListeners();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('PIN Berhasil diaktifkan')),
                 );
+              } else {
+                messenger.showSnackBar(SnackBar(content: Text(err)));
               }
             },
             child: const Text('Simpan'),
@@ -135,14 +143,21 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           TextButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final authProvider = context.read<AuthProvider>();
+
+              final err = await authProvider.removePin(controller.text);
+
               Navigator.pop(context);
-              final err = await context.read<AuthProvider>().removePin(
-                controller.text,
-              );
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(err ?? 'PIN Berhasil dihapus')),
+
+              if (err == null) {
+                await authProvider.refreshCurrentUser();
+                authProvider.notifyListeners();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('PIN Berhasil dihapus')),
                 );
+              } else {
+                messenger.showSnackBar(SnackBar(content: Text(err)));
               }
             },
             child: const Text('Hapus'),
@@ -354,12 +369,18 @@ class _SettingsPageState extends State<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('Tentang Kami'),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutUsPage())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AboutUsPage()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: const Text('Bantuan'),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpPage())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HelpPage()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.public),

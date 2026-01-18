@@ -214,4 +214,16 @@ class ChatService {
     );
     return response.statusCode == 200;
   }
+
+  Future<void> markDeliveredBackground(String msgId) async {
+    final url = '${ApiConfig.baseUrl}/api/chats/message/$msgId/delivered';
+    try {
+      await http.post(
+        Uri.parse(url),
+      );
+
+    } catch (e) {
+    }
+  }
+
 }
