@@ -246,7 +246,21 @@ class ChatProvider with ChangeNotifier {
         final messages = _messagesCache[chatId]!;
         _messagesCache[chatId] = messages.map((msg) {
           if (!msg.isRead && msg.senderId == _myUserId) {
-            return msg.copyWith(isRead: true);
+            return msg.copyWith(isRead: true, isDelivered: true);
+          }
+          return msg;
+        }).toList();
+        notifyListeners();
+      }
+    });
+
+    socket!.on('message_delivered', (data) {
+      String chatId = data['chat_id'];
+      if (_messagesCache.containsKey(chatId)) {
+        final messages = _messagesCache[chatId]!;
+        _messagesCache[chatId] = messages.map((msg) {
+          if (!msg.isDelivered && msg.senderId == _myUserId) {
+            return msg.copyWith(isDelivered: true);
           }
           return msg;
         }).toList();
@@ -361,6 +375,7 @@ class ChatProvider with ChangeNotifier {
       time: DateTime.now(),
       sentAt: DateTime.now(),
       isRead: false,
+      isDelivered: false,
       replyTo: null,
     );
 

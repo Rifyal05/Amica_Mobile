@@ -21,7 +21,6 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
   final List<String> _filters = ['Terbaru', 'Mengikuti', 'Temukan'];
   late ScrollController _scrollController;
   bool _isNavVisible = true;
-
   NavigationProvider? _navProvider;
 
   @override
@@ -100,7 +99,6 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
     }
 
     setState(() => _selectedFilterIndex = index);
-
     final provider = context.read<PostProvider>();
 
     if (index == 1) {
@@ -132,49 +130,6 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
             child: child,
           );
         },
-      ),
-    );
-  }
-
-  void _showModerationDialog(Map<String, dynamic> errorData) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(
-          Icons.warning_amber_rounded,
-          color: Colors.orange,
-          size: 48,
-        ),
-        title: const Text("Postingan Ditolak"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(errorData['message'] ?? "Konten melanggar aturan."),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.3)),
-              ),
-              child: Text(
-                "Alasan: ${errorData['reason']}",
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Mengerti"),
-          ),
-        ],
       ),
     );
   }
@@ -233,13 +188,6 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final postProvider = context.watch<PostProvider>();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (postProvider.moderationError != null) {
-        _showModerationDialog(postProvider.moderationError!);
-        postProvider.clearModerationError();
-      }
-    });
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -313,7 +261,6 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
                       ),
                     ),
                   ),
-
                   if (postProvider.isUploading)
                     SliverToBoxAdapter(
                       child: Padding(
@@ -336,7 +283,6 @@ class _ConnectState extends State<Connect> with SingleTickerProviderStateMixin {
                         ),
                       ),
                     ),
-
                   if (postProvider.posts.isEmpty && postProvider.isLoading)
                     const SliverFillRemaining(
                       child: Center(child: CircularProgressIndicator()),

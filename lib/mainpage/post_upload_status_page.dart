@@ -39,11 +39,6 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
       imageFile: widget.imageFile,
     );
 
-    debugPrint("=== DEBUG HASIL UPLOAD ===");
-    debugPrint("Raw Result: $result");
-    debugPrint("Moderation Details: ${result['moderation_details']}");
-    debugPrint("==========================");
-
     if (!mounted) return;
 
     setState(() {
@@ -52,13 +47,37 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
       } else if (result['is_moderated'] == true) {
         _status = 'rejected';
         _errorMessage = result['message'];
-        // Jika di log muncul datanya tapi di UI null, berarti key di bawah ini harus dipastikan sama
         _moderationDetails = result['moderation_details'];
+        _showSimpleErrorDialog(context, result['message']);
       } else {
         _status = 'error';
         _errorMessage = result['message'];
       }
     });
+  }
+
+  void _showSimpleErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 10),
+            Text("Postingan Ditahan"),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("MENGERTI"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -148,7 +167,7 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
         ),
         if (_status == 'rejected' && _moderationDetails != null) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           _buildModerationAnalysis(theme.colorScheme),
         ],
       ],
@@ -164,35 +183,47 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
         border: Border.all(color: colorScheme.error.withOpacity(0.2)),
       ),
       child: Column(
-        children: _moderationDetails!.entries.map((entry) {
-          final value = entry.value.toString().toLowerCase();
-          final isSafe = value == 'safe' || value == 'SAFE';
-
-          if (isSafe) return const SizedBox.shrink();
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  size: 14,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.psychology_outlined,
+                size: 18,
+                color: colorScheme.error,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "ANALISIS AI AMICA",
+                style: TextStyle(
                   color: colorScheme.error,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  "${entry.key.replaceAll('_', ' ').toUpperCase()}: ${entry.value.toString().toUpperCase()}",
-                  style: TextStyle(
-                    color: colorScheme.error,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._moderationDetails!.entries.map((entry) {
+            final value = entry.value.toString().toLowerCase();
+            final isSafe = value == 'safe' || value == 'bersih';
+
+            if (isSafe) return const SizedBox.shrink();
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                "${entry.key.replaceAll('_', ' ').toUpperCase()}: ${entry.value.toString().toUpperCase()}",
+                style: TextStyle(
+                  color: colorScheme.error,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
-          );
-        }).toList(),
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }

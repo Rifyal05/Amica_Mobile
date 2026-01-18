@@ -13,6 +13,7 @@ class ChatMessage {
   final DateTime time;
   final DateTime sentAt;
   final bool isRead;
+  final bool isDelivered;
   final bool isDeleted;
   final Map<String, dynamic>? replyTo;
 
@@ -29,6 +30,7 @@ class ChatMessage {
     required this.time,
     required this.sentAt,
     required this.isRead,
+    this.isDelivered = false,
     this.isDeleted = false,
     this.replyTo,
   }) : _rawSenderAvatar = senderAvatar;
@@ -56,12 +58,13 @@ class ChatMessage {
       time: DateTime.parse(json['sent_at']),
       sentAt: DateTime.parse(json['sent_at']),
       isRead: json['is_read'] ?? false,
+      isDelivered: json['is_delivered'] ?? false,
       isDeleted: json['is_deleted'] ?? false,
       replyTo: json['reply_to'],
     );
   }
 
-  ChatMessage copyWith({bool? isDeleted, String? text, bool? isRead}) {
+  ChatMessage copyWith({bool? isDeleted, String? text, bool? isRead, bool? isDelivered}) {
     return ChatMessage(
       id: id,
       chatId: chatId,
@@ -75,6 +78,7 @@ class ChatMessage {
       time: time,
       sentAt: sentAt,
       isRead: isRead ?? this.isRead,
+      isDelivered: isDelivered ?? this.isDelivered,
       isDeleted: isDeleted ?? this.isDeleted,
       replyTo: replyTo,
     );

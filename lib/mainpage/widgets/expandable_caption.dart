@@ -11,7 +11,7 @@ class ExpandableCaption extends StatefulWidget {
     required this.text,
     required this.isExpanded,
     required this.onToggle,
-    this.stepLimit = 250,
+    this.stepLimit = 300,
   });
 
   @override
@@ -29,7 +29,7 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
 
   void _showMore() {
     setState(() {
-      _currentLimit += widget.stepLimit;
+      _currentLimit += 500;
     });
   }
 

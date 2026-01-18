@@ -47,7 +47,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <!-- Ganti host dengan IP server backend kamu atau domain asli nanti -->
                 <data android:scheme="http" android:host="withamica.my.id" android:pathPrefix="/post/" />
                 <data android:scheme="https" android:host="withamica.my.id" android:pathPrefix="/post/" />
             </intent-filter>
@@ -75,6 +74,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
         </intent>
     </queries>
 </manifest>

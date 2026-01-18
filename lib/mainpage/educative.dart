@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -26,35 +26,37 @@ class _EducativePageState extends State<Educative>
   bool get wantKeepAlive => true;
 
   int _selectedFilterIndex = 0;
-  final List<String> _filters = [
-    'Semua',
-    'Bullying',
-    'Peran Orang tua',
-    'Penanganan kasus',
-    'Hukum dan Keamanan',
-    'Lingkungan Sekolah',
-    'Parenting Positif',
-    'Kesehatan Mental',
-    'Perilaku dan Psikologi',
-  ];
+  List<String> _filters = ['Semua'];
 
   List<Article> _articles = [];
-  Article? _featuredArticle;
+  List<Article> _featuredArticles = [];
   int _page = 1;
   final int _limit = 10;
   bool _hasNextPage = true;
   bool _isFirstLoadRunning = true;
   bool _isLoadMoreRunning = false;
   late ScrollController _scrollController;
+  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _errorMessage = '';
   NavigationProvider? _navProvider;
+
+  int _currentFeaturedIndex = 0;
+  late PageController _pageController;
+  Timer? _sliderTimer;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_scrollListener);
-    _fetchFirstBatch();
+    _pageController = PageController();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await _fetchCategories();
+    await _fetchFeaturedArticles();
+    await _fetchFirstBatch();
   }
 
   @override
@@ -68,10 +70,30 @@ class _EducativePageState extends State<Educative>
 
   @override
   void dispose() {
+    _sliderTimer?.cancel();
+    _pageController.dispose();
     _navProvider?.removeListener(_handleScrollToTop);
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _startSliderTimer() {
+    _sliderTimer?.cancel();
+    if (_featuredArticles.length > 1) {
+      _sliderTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        if (_pageController.hasClients) {
+          int nextStep = _currentFeaturedIndex + 1;
+          if (nextStep >= _featuredArticles.length) nextStep = 0;
+          _pageController.animateToPage(
+            nextStep,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
   }
 
   void _handleScrollToTop() {
@@ -101,13 +123,50 @@ class _EducativePageState extends State<Educative>
   String _buildApiUrl(int page) {
     String baseUrlStr =
         '${ApiConfig.baseUrl}/api/articles?page=$page&limit=$_limit';
-    if (_selectedFilterIndex != 0) {
-      baseUrlStr += '&category=${_filters[_selectedFilterIndex]}';
+    if (_selectedFilterIndex != 0 && _filters.isNotEmpty) {
+      baseUrlStr +=
+          '&category=${Uri.encodeComponent(_filters[_selectedFilterIndex])}';
     }
     if (_searchQuery.isNotEmpty) {
-      baseUrlStr += '&search=$_searchQuery';
+      baseUrlStr += '&q=${Uri.encodeComponent(_searchQuery)}';
     }
     return baseUrlStr;
+  }
+
+  Future<void> _fetchCategories() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/articles/categories'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _filters = List<String>.from(data);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error categories: $e");
+    }
+  }
+
+  Future<void> _fetchFeaturedArticles() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/articles?is_featured=true&limit=5'),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<Article> loaded = (data['articles'] as List)
+            .map((json) => Article.fromJson(json))
+            .toList();
+        setState(() {
+          _featuredArticles = loaded;
+          _startSliderTimer();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching featured: $e");
+    }
   }
 
   Future<void> _fetchFirstBatch() async {
@@ -123,22 +182,17 @@ class _EducativePageState extends State<Educative>
             .map((json) => Article.fromJson(json))
             .toList();
 
-        bool hasNext = loaded.length == _limit;
+        bool hasNext = false;
         if (data['pagination'] != null) {
-          hasNext = data['pagination']['has_next'] ?? hasNext;
+          hasNext = data['pagination']['has_next'] ?? false;
+        } else {
+          hasNext = loaded.length == _limit;
         }
 
         setState(() {
           _articles = loaded;
           _hasNextPage = hasNext;
-          if (_articles.isNotEmpty) {
-            final featured = _articles.where((a) => a.isFeatured).toList();
-            _featuredArticle = featured.isNotEmpty
-                ? featured[Random().nextInt(featured.length)]
-                : _articles.first;
-          } else {
-            _featuredArticle = null;
-          }
+          _page = 1;
         });
       } else {
         setState(() => _errorMessage = "Server Error: ${response.statusCode}");
@@ -160,12 +214,18 @@ class _EducativePageState extends State<Educative>
         final List<Article> newArts = (data['articles'] as List)
             .map((json) => Article.fromJson(json))
             .toList();
+
+        bool hasNext = false;
+        if (data['pagination'] != null) {
+          hasNext = data['pagination']['has_next'] ?? false;
+        } else {
+          hasNext = newArts.length == _limit;
+        }
+
         setState(() {
           _page++;
           _articles.addAll(newArts);
-          _hasNextPage = (data['pagination'] != null)
-              ? data['pagination']['has_next']
-              : newArts.length == _limit;
+          _hasNextPage = hasNext;
         });
       }
     } catch (_) {
@@ -175,6 +235,8 @@ class _EducativePageState extends State<Educative>
   }
 
   Future<void> _handleRefresh() async {
+    await _fetchCategories();
+    await _fetchFeaturedArticles();
     _page = 1;
     _hasNextPage = true;
     _articles.clear();
@@ -232,6 +294,22 @@ class _EducativePageState extends State<Educative>
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        title: const Text(
+          "Edukasi Orang Tua",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+        backgroundColor: theme.colorScheme.surface,
+        actions: [
+          IconButton(
+            onPressed: _handleRefresh,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: _isFirstLoadRunning && _articles.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty && _articles.isEmpty
@@ -249,16 +327,8 @@ class _EducativePageState extends State<Educative>
                     SliverToBoxAdapter(child: _buildFilterChips(context)),
                     const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                    if (_searchQuery.isEmpty && _featuredArticle != null)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 24.0),
-                          child: _buildFeaturedArticleCard(
-                            context,
-                            article: _featuredArticle!,
-                          ),
-                        ),
-                      ),
+                    if (_searchQuery.isEmpty && _featuredArticles.isNotEmpty)
+                      SliverToBoxAdapter(child: _buildFeaturedSlider(context)),
 
                     SliverToBoxAdapter(
                       child: Padding(
@@ -269,8 +339,8 @@ class _EducativePageState extends State<Educative>
                         child: Text(
                           _searchQuery.isEmpty
                               ? 'Bacaan Terkini'
-                              : 'Hasil Pencarian',
-                          style: theme.textTheme.titleLarge?.copyWith(
+                              : 'Hasil Pencarian untuk "$_searchQuery"',
+                          style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -370,20 +440,21 @@ class _EducativePageState extends State<Educative>
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Panduan Orang Tua',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            'Selamat Datang',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Sumber daya untuk mendampingi tumbuh kembang anak.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            'Mari belajar bersama untuk tumbuh kembang anak.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -396,9 +467,10 @@ class _EducativePageState extends State<Educative>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
+        controller: _searchController,
         onSubmitted: (val) {
           setState(() {
-            _searchQuery = val;
+            _searchQuery = val.trim();
             _page = 1;
             _hasNextPage = true;
           });
@@ -406,15 +478,19 @@ class _EducativePageState extends State<Educative>
         },
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
-          hintText: 'Cari artikel...',
+          hintText: 'Cari topik atau judul...',
           prefixIcon: Icon(
             Icons.search,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_searchController.text.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 20),
                   onPressed: () {
+                    _searchController.clear();
                     setState(() {
                       _searchQuery = '';
                       _page = 1;
@@ -422,14 +498,33 @@ class _EducativePageState extends State<Educative>
                     });
                     _fetchFirstBatch();
                   },
-                )
-              : null,
+                ),
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _searchQuery = _searchController.text.trim();
+                    _page = 1;
+                    _hasNextPage = true;
+                  });
+                  _fetchFirstBatch();
+                },
+              ),
+              const SizedBox(width: 4),
+            ],
+          ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          fillColor: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide.none,
           ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
         ),
       ),
     );
@@ -454,6 +549,7 @@ class _EducativePageState extends State<Educative>
                   _page = 1;
                   _hasNextPage = true;
                   _searchQuery = '';
+                  _searchController.clear();
                 });
                 _fetchFirstBatch();
               }
@@ -462,16 +558,62 @@ class _EducativePageState extends State<Educative>
             selectedColor: Theme.of(context).colorScheme.primary,
             labelStyle: TextStyle(
               fontWeight: FontWeight.bold,
+              fontSize: 12,
               color: isSelected
                   ? Theme.of(context).colorScheme.onPrimary
                   : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            shape: const StadiumBorder(),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             side: BorderSide.none,
           );
         },
         separatorBuilder: (context, index) => const SizedBox(width: 8),
       ),
+    );
+  }
+
+  Widget _buildFeaturedSlider(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _featuredArticles.length,
+            onPageChanged: (index) {
+              setState(() => _currentFeaturedIndex = index);
+            },
+            itemBuilder: (context, index) {
+              return _buildFeaturedArticleCard(
+                context,
+                article: _featuredArticles[index],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            _featuredArticles.length,
+            (index) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 6,
+              width: _currentFeaturedIndex == index ? 20 : 6,
+              decoration: BoxDecoration(
+                color: _currentFeaturedIndex == index
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 
@@ -499,16 +641,11 @@ class _EducativePageState extends State<Educative>
         width: width,
         height: height,
         color: Colors.grey.shade200,
-        child: Center(
+        child: const Center(
           child: SizedBox(
             width: 24,
             height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).primaryColor,
-              ),
-            ),
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
       ),
@@ -539,27 +676,22 @@ class _EducativePageState extends State<Educative>
           );
         },
         borderRadius: BorderRadius.circular(20.0),
-        child: SizedBox(
-          height: 250,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20.0),
           child: Stack(
             children: [
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20.0),
-                  child: _buildNetworkImage(article.imageUrl),
-                ),
-              ),
+              Positioned.fill(child: _buildNetworkImage(article.imageUrl)),
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20.0),
                     gradient: LinearGradient(
                       colors: [
-                        Colors.black.withOpacity(0.8),
+                        Colors.black.withOpacity(0.9),
+                        Colors.black.withOpacity(0.3),
                         Colors.transparent,
                       ],
                       begin: Alignment.bottomCenter,
-                      end: Alignment.center,
+                      end: Alignment.topCenter,
                     ),
                   ),
                 ),
@@ -578,21 +710,20 @@ class _EducativePageState extends State<Educative>
                       ),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         article.category.toUpperCase(),
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onPrimary,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       article.title,
-                      style: theme.textTheme.titleLarge?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -625,16 +756,19 @@ class _EducativePageState extends State<Educative>
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12.0),
-              child: _buildNetworkImage(
-                article.imageUrl,
-                width: 100,
-                height: 100,
+            Hero(
+              tag: 'art_img_${article.id}',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12.0),
+                child: _buildNetworkImage(
+                  article.imageUrl,
+                  width: 90,
+                  height: 90,
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -643,16 +777,16 @@ class _EducativePageState extends State<Educative>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    article.category.toUpperCase(),
+                    article.category,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     article.title,
-                    style: theme.textTheme.bodyLarge?.copyWith(
+                    style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                     maxLines: 2,
@@ -662,15 +796,16 @@ class _EducativePageState extends State<Educative>
                   Row(
                     children: [
                       Icon(
-                        Icons.access_time,
+                        Icons.schedule_rounded,
                         size: 14,
                         color: colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${article.readTime} min read',
+                        '${article.readTime} mnt baca',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
+                          fontSize: 10,
                         ),
                       ),
                     ],

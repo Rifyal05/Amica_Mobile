@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'package:amica/mainpage/widgets/verified_badge.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../provider/chat_provider.dart';
 import '../provider/auth_provider.dart';
 import '../services/api_config.dart';
@@ -124,6 +128,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _onReply(ChatMessage msg) {
+    if (msg.isDeleted) return;
     setState(() => _replyingTo = msg);
     _focusNode.requestFocus();
   }
@@ -158,7 +163,6 @@ class _ChatPageState extends State<ChatPage> {
     if (confirm == true) {
       final success = await _userService.blockUser(widget.targetUserId!);
       if (mounted) {
-        // Pengecekan mounted
         if (success) {
           setState(() => _iBlockedThisUser = true);
           _showTopSnackbar("Pengguna berhasil diblokir");
@@ -173,7 +177,6 @@ class _ChatPageState extends State<ChatPage> {
     if (widget.targetUserId == null) return;
     final success = await _userService.unblockUser(widget.targetUserId!);
     if (mounted) {
-      // Pengecekan mounted
       if (success) {
         setState(() => _iBlockedThisUser = false);
         _showTopSnackbar("Blokir berhasil dibuka");
@@ -181,6 +184,67 @@ class _ChatPageState extends State<ChatPage> {
         _showTopSnackbar("Gagal membuka blokir", isError: true);
       }
     }
+  }
+
+  void _scrollToMessage(String? targetMsgId) {
+    if (targetMsgId == null) return;
+    final chatProv = context.read<ChatProvider>();
+    final messages = chatProv.getMessages(widget.chatId);
+    final index = messages.indexWhere((m) => m.id == targetMsgId);
+    if (index != -1) {
+      _scrollController.animateTo(
+        index * 70.0,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.fastOutSlowIn,
+      );
+    }
+  }
+
+  void _showActionMenu(ChatMessage msg, bool isMe) {
+    if (msg.isDeleted && !isMe) return;
+
+    _focusNode.unfocus();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            if (!msg.isDeleted) ...[
+              ListTile(
+                leading: const Icon(Icons.reply),
+                title: const Text("Balas"),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _onReply(msg);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text("Salin Teks"),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Clipboard.setData(ClipboardData(text: msg.text ?? ""));
+                  _showTopSnackbar("Pesan disalin");
+                },
+              ),
+            ],
+            if (isMe && !msg.isDeleted)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  "Hapus Pesan",
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteMessage(msg.id);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _handleMenuOption(String value) {
@@ -254,6 +318,7 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
+        scrolledUnderElevation: 0,
         title: GestureDetector(
           onTap: () {
             if (widget.isGroup) {
@@ -454,45 +519,40 @@ class _ChatPageState extends State<ChatPage> {
                         children: [
                           if (showDate)
                             _DateChip(text: _formatDateSeparator(msg.sentAt)),
-                          GestureDetector(
-                            onHorizontalDragEnd: (details) {
-                              if (details.primaryVelocity! < 0) _onReply(msg);
+                          Dismissible(
+                            key: Key("msg_${msg.id}"),
+                            direction: msg.isDeleted
+                                ? DismissDirection.none
+                                : DismissDirection.startToEnd,
+                            dismissThresholds: const {
+                              DismissDirection.startToEnd: 0.2,
                             },
-                            onLongPress: () {
-                              if (isMe && !msg.isDeleted) {
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    title: const Text("Hapus pesan ini?"),
-                                    content: const Text(
-                                      "Pesan akan dihapus untuk semua orang.",
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text("Batal"),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          _deleteMessage(msg.id);
-                                          Navigator.pop(context);
-                                        },
-                                        child: const Text(
-                                          "Hapus",
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
+                            movementDuration: const Duration(milliseconds: 200),
+                            onDismissed: (_) => _onReply(msg),
+                            confirmDismiss: (_) async {
+                              if (!msg.isDeleted) {
+                                _onReply(msg);
                               }
+                              return false;
                             },
-                            child: _MessageBubble(
-                              msg: msg,
-                              isMe: isMe,
-                              showAvatar: showAvatar,
-                              isGroup: widget.isGroup,
-                              currentChatId: widget.chatId,
+                            background: Container(
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 20),
+                              child: Icon(
+                                Icons.reply,
+                                color: theme.primaryColor,
+                              ),
+                            ),
+                            child: GestureDetector(
+                              onLongPress: () => _showActionMenu(msg, isMe),
+                              child: _MessageBubble(
+                                msg: msg,
+                                isMe: isMe,
+                                showAvatar: showAvatar,
+                                isGroup: widget.isGroup,
+                                currentChatId: widget.chatId,
+                                onReplyTap: (id) => _scrollToMessage(id),
+                              ),
                             ),
                           ),
                         ],
@@ -650,8 +710,10 @@ class _InviteCard extends StatefulWidget {
 }
 
 class _InviteCardState extends State<_InviteCard> {
+  static final Set<String> _invalidTokens = {};
   final ChatService _chatService = ChatService();
   bool _isLoading = true;
+  bool _isInvalid = false;
   String _groupName = "Undangan Grup";
   String? _groupImage;
   int _memberCount = 0;
@@ -667,6 +729,17 @@ class _InviteCardState extends State<_InviteCard> {
     final token = widget.inviteLink.split('/').last;
     if (token.isEmpty) return;
 
+    if (_invalidTokens.contains(token)) {
+      if (mounted) {
+        setState(() {
+          _isInvalid = true;
+          _isLoading = false;
+          _groupName = "Link tidak valid";
+        });
+      }
+      return;
+    }
+
     try {
       final data = await _chatService.getInviteInfo(token);
       if (mounted) {
@@ -679,7 +752,14 @@ class _InviteCardState extends State<_InviteCard> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _groupName = "Link tidak valid");
+      _invalidTokens.add(token);
+      if (mounted) {
+        setState(() {
+          _isInvalid = true;
+          _isLoading = false;
+          _groupName = "Link tidak valid";
+        });
+      }
     }
   }
 
@@ -769,7 +849,7 @@ class _InviteCardState extends State<_InviteCard> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (!_isLoading)
+                    if (!_isLoading && !_isInvalid)
                       Text(
                         "$_memberCount Anggota",
                         style: TextStyle(
@@ -787,16 +867,14 @@ class _InviteCardState extends State<_InviteCard> {
             width: double.infinity,
             height: 36,
             child: FilledButton(
-              onPressed: (_isLoading || _isAlreadyMember)
+              onPressed: (_isLoading || _isAlreadyMember || _isInvalid)
                   ? null
                   : _handleButtonPress,
               style: FilledButton.styleFrom(
-                backgroundColor: _isAlreadyMember
+                backgroundColor: (_isAlreadyMember || _isInvalid)
                     ? Colors.grey.shade500
                     : theme.colorScheme.secondary,
-                foregroundColor: _isAlreadyMember
-                    ? Colors.black87
-                    : theme.colorScheme.onSecondary,
+                foregroundColor: Colors.white,
                 elevation: 0,
               ),
               child: _isLoading
@@ -806,7 +884,11 @@ class _InviteCardState extends State<_InviteCard> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : Text(
-                      _isAlreadyMember ? "Sudah Bergabung" : "Gabung Grup",
+                      _isInvalid
+                          ? "Link Kadaluarsa"
+                          : (_isAlreadyMember
+                                ? "Anda Sudah Bergabung"
+                                : "Gabung Grup"),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
             ),
@@ -823,6 +905,7 @@ class _MessageBubble extends StatelessWidget {
   final bool showAvatar;
   final bool isGroup;
   final String currentChatId;
+  final Function(String?)? onReplyTap;
 
   const _MessageBubble({
     required this.msg,
@@ -830,6 +913,7 @@ class _MessageBubble extends StatelessWidget {
     this.showAvatar = false,
     this.isGroup = false,
     required this.currentChatId,
+    this.onReplyTap,
   });
 
   void _navigateToProfile(BuildContext context) {
@@ -846,6 +930,30 @@ class _MessageBubble extends StatelessWidget {
   bool _isInviteLink(String text) {
     return (text.contains("/join/") && text.startsWith("http")) ||
         text.startsWith("amica://join/");
+  }
+
+  Widget _buildMessageContent(BuildContext context, ThemeData theme) {
+    final text = msg.text ?? "";
+
+    return Linkify(
+      onOpen: (link) async {
+        final uri = Uri.parse(link.url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      text: text,
+      style: TextStyle(
+        color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+        fontSize: 15,
+      ),
+      linkStyle: TextStyle(
+        color: isMe ? Colors.white : Colors.blue,
+        decoration: TextDecoration.none,
+        fontWeight: FontWeight.bold,
+      ),
+      options: const LinkifyOptions(humanize: false),
+    );
   }
 
   @override
@@ -921,34 +1029,37 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
                 if (msg.replyTo != null)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border(
-                        left: BorderSide(color: theme.primaryColor, width: 4),
+                  GestureDetector(
+                    onTap: () => onReplyTap?.call(msg.replyTo!['id']),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border(
+                          left: BorderSide(color: theme.primaryColor, width: 4),
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          msg.replyTo!['sender_name'],
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                            color: theme.primaryColor,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            msg.replyTo!['sender_name'],
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              color: theme.primaryColor,
+                            ),
                           ),
-                        ),
-                        Text(
-                          msg.replyTo!['text'],
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ],
+                          Text(
+                            msg.replyTo!['text'],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 Container(
@@ -993,15 +1104,7 @@ class _MessageBubble extends StatelessWidget {
                                 isMe: isMe,
                                 currentChatId: currentChatId,
                               )
-                            : Text(
-                                msg.text ?? "",
-                                style: TextStyle(
-                                  color: isMe
-                                      ? theme.colorScheme.onPrimary
-                                      : theme.colorScheme.onSurface,
-                                  fontSize: 15,
-                                ),
-                              )),
+                            : _buildMessageContent(context, theme)),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 2, right: 2, left: 2),
@@ -1020,7 +1123,11 @@ class _MessageBubble extends StatelessWidget {
                       if (isMe) ...[
                         const SizedBox(width: 4),
                         Icon(
-                          msg.isRead ? Icons.done_all : Icons.check,
+                          msg.isRead
+                              ? Icons.done_all
+                              : (msg.isDelivered
+                                    ? Icons.done_all
+                                    : Icons.check),
                           size: 14,
                           color: msg.isRead
                               ? Colors.lightBlueAccent

@@ -17,12 +17,6 @@ class ArticleDetailPage extends StatelessWidget {
     }
   }
 
-  void _shareArticle() {
-    Share.share(
-      'Baca artikel menarik ini: "${article.title}"\n\nSelengkapnya di Amica App.',
-      subject: article.title,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,14 +116,6 @@ class ArticleDetailPage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _shareArticle,
-        icon: const Icon(Icons.share_rounded),
-        label: const Text("Bagikan"),
-        backgroundColor: colorScheme.primaryContainer,
-        foregroundColor: colorScheme.onPrimaryContainer,
-        elevation: 2,
       ),
     );
   }

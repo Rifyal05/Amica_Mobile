@@ -13,6 +13,8 @@ import '../provider/chat_provider.dart';
 import '../provider/font_provider.dart';
 import '../provider/theme_provider.dart';
 import '../provider/auth_provider.dart';
+import 'about_us.dart';
+import 'help_page.dart';
 import 'moderation_list_page.dart';
 import '../provider/moderation_provider.dart';
 import '../services/custom_cache_manager.dart';
@@ -352,17 +354,17 @@ class _SettingsPageState extends State<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('Tentang Kami'),
-            onTap: () {},
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutUsPage())),
+          ),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Bantuan'),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpPage())),
           ),
           ListTile(
             leading: const Icon(Icons.public),
             title: const Text('Situs Web Kami'),
             onTap: () => _launchURL('https://www.google.com'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('Kebijakan Privasi'),
-            onTap: () {},
           ),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),

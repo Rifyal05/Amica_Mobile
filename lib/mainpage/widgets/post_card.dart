@@ -402,7 +402,7 @@ class _PostCardState extends State<PostCard>
     );
 
     try {
-      final String domain = "http://192.168.1.10:5000";
+      final String domain = "https://withamica.my.id";
       final String postLink = "$domain/post/${widget.post.id}";
 
       final String shareText =

@@ -137,12 +137,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Gagal', style: TextStyle(color: Colors.red)),
-        content: Text('Komentar ditolak: ${reason ?? "Melanggar aturan."}'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.report_problem_rounded, color: Colors.red),
+            SizedBox(width: 10),
+            Text('Komentar Ditolak'),
+          ],
+        ),
+        content: Text(
+          'Maaf, komentar Anda mengandung konten yang melanggar aturan (${reason ?? "Konten tidak pantas"}).',
+          style: const TextStyle(fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text('TUTUP'),
           ),
         ],
       ),

@@ -74,19 +74,50 @@ class _TalkState extends State<Talk> {
     final colorScheme = Theme.of(context).colorScheme;
     final chatProvider = context.watch<ChatProvider>();
 
+    final int unreadDirect = chatProvider.inbox
+        .where((c) => !c.isGroup)
+        .fold(0, (sum, item) => sum + item.unreadCount);
+    final int unreadGroup = chatProvider.inbox
+        .where((c) => c.isGroup)
+        .fold(0, (sum, item) => sum + item.unreadCount);
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: colorScheme.surface,
         appBar: AppBar(
           title: const Text(
-            "Dukungan",
+            "Komunikasi",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
           ),
-          bottom: const TabBar(
+          centerTitle: false,
+          scrolledUnderElevation: 0,
+          bottom: TabBar(
+            dividerColor: Colors.transparent,
+            indicatorSize: TabBarIndicatorSize.label,
             tabs: [
-              Tab(text: "Pesan"),
-              Tab(text: "Grup"),
+              Tab(
+                child: Badge(
+                  isLabelVisible: unreadDirect > 0,
+                  label: Text('$unreadDirect'),
+                  backgroundColor: colorScheme.primary,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text("Pesan"),
+                  ),
+                ),
+              ),
+              Tab(
+                child: Badge(
+                  isLabelVisible: unreadGroup > 0,
+                  label: Text('$unreadGroup'),
+                  backgroundColor: colorScheme.secondary,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text("Grup"),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -164,11 +195,12 @@ class _TalkState extends State<Talk> {
                   filled: true,
                   fillColor: Theme.of(
                     context,
-                  ).colorScheme.surfaceContainerHighest,
+                  ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide.none,
                   ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
               ),
             ),
@@ -182,6 +214,7 @@ class _TalkState extends State<Talk> {
               child: Center(
                 child: Text(
                   isGroupOnly ? "Belum ada grup." : "Belum ada pesan.",
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ),
             )
@@ -296,14 +329,33 @@ class _TalkState extends State<Talk> {
                 color: Colors.grey,
               ),
             ),
-          Text(displayMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            displayMessage,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+              color: unreadCount > 0
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(time, style: theme.textTheme.bodySmall),
+          Text(
+            time,
+            style: TextStyle(
+              fontSize: 12,
+              color: unreadCount > 0
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+              fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
           const SizedBox(height: 4),
           if (unreadCount > 0)
             CircleAvatar(
@@ -314,6 +366,7 @@ class _TalkState extends State<Talk> {
                 style: TextStyle(
                   color: theme.colorScheme.onPrimary,
                   fontSize: 10,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             )
@@ -430,14 +483,15 @@ class _TalkState extends State<Talk> {
       padding: const EdgeInsets.all(16.0),
       child: ExpansionTile(
         title: Text(
-          'Dukungan Mental & Darurat',
+          'Lembaga Profesional',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: colorScheme.onSurface,
           ),
         ),
-        collapsedBackgroundColor: colorScheme.surfaceContainer,
-        backgroundColor: colorScheme.surfaceContainer,
+        collapsedBackgroundColor: colorScheme.surfaceContainerHighest
+            .withOpacity(0.3),
+        backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         collapsedShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -451,20 +505,6 @@ class _TalkState extends State<Talk> {
             onTap: () => _launchWhatsApp(
               '628111129129',
               'Halo SAPA 129, saya membutuhkan bantuan.',
-            ),
-          ),
-          _buildSupportTile(
-            context,
-            icon: Icons.public,
-            title: 'Into The Light Indonesia',
-            subtitle: 'Website dukungan kesehatan jiwa',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const WebViewPage(
-                  title: 'Into The Light ID',
-                  url: 'https://www.intothelightid.org/',
-                ),
-              ),
             ),
           ),
           _buildSupportTile(
@@ -495,9 +535,12 @@ class _TalkState extends State<Talk> {
   }) {
     return ListTile(
       leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
       subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-      trailing: const Icon(Icons.launch, size: 20),
+      trailing: const Icon(Icons.launch, size: 18),
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );

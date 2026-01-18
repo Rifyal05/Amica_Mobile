@@ -26,6 +26,14 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
+  void updateUser(User newUser) {
+    _currentUser = newUser;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('user_data', jsonEncode(_currentUser!.toJson()));
+    });
+    notifyListeners();
+  }
+
   Future<String?> getFreshToken() async {
     final newToken = await _authService.refreshToken();
     if (newToken != null) {
