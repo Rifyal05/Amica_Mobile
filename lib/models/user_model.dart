@@ -14,6 +14,7 @@ class User {
   final bool hasPin;
   final bool isVerified;
   final Map<String, dynamic>? stats;
+  bool isAiModerationEnabled;
 
   User({
     required this.id,
@@ -29,6 +30,7 @@ class User {
     this.hasPin = false,
     this.isVerified = false,
     this.stats,
+    this.isAiModerationEnabled = false,
   });
 
   String? get fullAvatarUrl => ApiConfig.getFullUrl(avatarUrl);
@@ -48,6 +50,7 @@ class User {
     bool? hasPin,
     bool? isVerified,
     Map<String, dynamic>? stats,
+    bool? isAiModerationEnabled,
   }) {
     return User(
       id: id ?? this.id,
@@ -63,6 +66,8 @@ class User {
       hasPin: hasPin ?? this.hasPin,
       isVerified: isVerified ?? this.isVerified,
       stats: stats ?? this.stats,
+      isAiModerationEnabled:
+          isAiModerationEnabled ?? this.isAiModerationEnabled,
     );
   }
 
@@ -82,6 +87,7 @@ class User {
       hasPin: json['has_pin'] ?? false,
       isVerified: json['is_verified'] ?? false,
       stats: json['stats'],
+      isAiModerationEnabled: json['is_ai_moderation_enabled'] ?? false,
     );
   }
 
@@ -100,6 +106,7 @@ class User {
       'has_pin': hasPin,
       'is_verified': isVerified,
       'stats': stats,
+      'is_ai_moderation_enabled': isAiModerationEnabled,
     };
   }
 }

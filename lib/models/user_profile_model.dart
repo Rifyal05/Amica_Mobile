@@ -10,6 +10,7 @@ class UserProfileData {
   final UserStats stats;
   final UserStatus status;
   final bool isVerified;
+  final bool isAiModerationEnabled;
   final String? fullNameWithTitle;
   final String? strNumber;
   final String? province;
@@ -26,6 +27,7 @@ class UserProfileData {
     required this.stats,
     required this.status,
     this.isVerified = false,
+    this.isAiModerationEnabled = false,
     this.fullNameWithTitle,
     this.strNumber,
     this.province,
@@ -47,6 +49,7 @@ class UserProfileData {
       stats: UserStats.fromJson(json['stats'] ?? {}),
       status: UserStatus.fromJson(json['status'] ?? {}),
       isVerified: json['is_verified'] ?? false,
+      isAiModerationEnabled: json['is_ai_moderation_enabled'] ?? false,
       fullNameWithTitle: json['full_name'],
       strNumber: json['str_number'],
       province: json['province'],
@@ -73,8 +76,10 @@ class UserProfileData {
         'is_following': status.isFollowing,
         'is_saved_posts_public': status.isSavedPostsPublic,
         'is_blocked': status.isBlocked,
+        'is_ai_moderation_enabled': isAiModerationEnabled,
       },
       'is_verified': isVerified,
+      'is_ai_moderation_enabled': isAiModerationEnabled,
       'full_name': fullNameWithTitle,
       'str_number': strNumber,
       'province': province,
@@ -109,12 +114,14 @@ class UserStatus {
   final bool isFollowing;
   final bool isSavedPostsPublic;
   final bool isBlocked;
+  final bool isAiModerationEnabled;
 
   UserStatus({
     required this.isMe,
     required this.isFollowing,
     required this.isSavedPostsPublic,
     this.isBlocked = false,
+    this.isAiModerationEnabled = false,
   });
 
   factory UserStatus.fromJson(Map<String, dynamic> json) {
@@ -123,6 +130,7 @@ class UserStatus {
       isFollowing: json['is_following'] ?? false,
       isSavedPostsPublic: json['is_saved_posts_public'] ?? false,
       isBlocked: json['is_blocked'] ?? false,
+      isAiModerationEnabled: json['is_ai_moderation_enabled'] ?? false,
     );
   }
 }

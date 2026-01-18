@@ -21,6 +21,8 @@ class ChatProvider with ChangeNotifier {
   String? _myUserId;
   bool _isLoading = false;
 
+  Function(String, String, String)? onModerationBlocked;
+
   List<ChatRoom> get inbox => _inbox;
   bool get isLoading => _isLoading;
 
@@ -64,6 +66,7 @@ class ChatProvider with ChangeNotifier {
           unreadCount: 0,
           targetUserId: old.targetUserId,
           targetUsername: old.targetUsername,
+          isBlockedByMe: old.isBlockedByMe,
         );
         notifyListeners();
       }
@@ -188,6 +191,14 @@ class ChatProvider with ChangeNotifier {
       final newMessage = ChatMessage.fromJson(data);
       final currentList = _messagesCache[newMessage.chatId] ?? [];
 
+      if (newMessage.senderId != _myUserId) {
+        socket!.emit('message_received', {
+          'message_id': newMessage.id,
+          'chat_id': newMessage.chatId,
+          'sender_id': newMessage.senderId,
+        });
+      }
+
       final tempIndex = currentList.indexWhere(
         (m) =>
             m.id.startsWith('temp_') &&
@@ -235,6 +246,7 @@ class ChatProvider with ChangeNotifier {
           unreadCount: chat.unreadCount,
           targetUserId: chat.targetUserId,
           targetUsername: chat.targetUsername,
+          isBlockedByMe: chat.isBlockedByMe,
         );
       }
       notifyListeners();
@@ -256,15 +268,14 @@ class ChatProvider with ChangeNotifier {
 
     socket!.on('message_delivered', (data) {
       String chatId = data['chat_id'];
+      String msgId = data['message_id'];
       if (_messagesCache.containsKey(chatId)) {
         final messages = _messagesCache[chatId]!;
-        _messagesCache[chatId] = messages.map((msg) {
-          if (!msg.isDelivered && msg.senderId == _myUserId) {
-            return msg.copyWith(isDelivered: true);
-          }
-          return msg;
-        }).toList();
-        notifyListeners();
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          _messagesCache[chatId]![idx] = messages[idx].copyWith(isDelivered: true);
+          notifyListeners();
+        }
       }
     });
 
@@ -278,6 +289,17 @@ class ChatProvider with ChangeNotifier {
       String username = data['username'] ?? '';
       _typingStatus[chatId] = isTyping ? username : null;
       notifyListeners();
+    });
+
+    socket!.on('moderation_blocked', (data) {
+      if (onModerationBlocked != null) {
+        onModerationBlocked!(
+          data['chat_id'],
+          data['user_name'],
+          data['user_id'],
+        );
+      }
+      fetchInbox();
     });
 
     socket!.connect();
@@ -310,6 +332,7 @@ class ChatProvider with ChangeNotifier {
           unreadCount: newUnread,
           targetUserId: oldChat.targetUserId,
           targetUsername: oldChat.targetUsername,
+          isBlockedByMe: oldChat.isBlockedByMe,
         ),
       );
       notifyListeners();
@@ -344,6 +367,7 @@ class ChatProvider with ChangeNotifier {
           unreadCount: data['unread_count'],
           targetUserId: oldChat.targetUserId,
           targetUsername: oldChat.targetUsername,
+          isBlockedByMe: oldChat.isBlockedByMe,
         ),
       );
       notifyListeners();

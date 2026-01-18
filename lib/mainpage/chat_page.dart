@@ -64,6 +64,15 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _typingTimer?.cancel();
+    _messageController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
   void _checkBlockStatus() async {
     if (widget.targetUserId == null || widget.isGroup) return;
     final profile = await _userService.getUserProfile(widget.targetUserId!);
@@ -92,10 +101,13 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _onTextChanged(String text) {
+    if (!mounted) return;
     context.read<ChatProvider>().sendTyping(widget.chatId, true);
     _typingTimer?.cancel();
     _typingTimer = Timer(const Duration(milliseconds: 1500), () {
-      context.read<ChatProvider>().sendTyping(widget.chatId, false);
+      if (mounted) {
+        context.read<ChatProvider>().sendTyping(widget.chatId, false);
+      }
     });
   }
 
@@ -604,9 +616,14 @@ class _ChatPageState extends State<ChatPage> {
                 child: Column(
                   children: [
                     const Text(
-                      "Anda telah memblokir pengguna ini",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      "Akun ini telah terblokir. Anda mungkin telah memblokir akun ini atau jika anda tidak merasa melakukannya, sistem moderasi mungkin telah memblokirnya untuk anda.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
+                    const SizedBox(height: 8),
                     TextButton(
                       onPressed: _handleUnblock,
                       child: const Text("Buka Blokir untuk mengirim pesan"),
@@ -1104,7 +1121,20 @@ class _MessageBubble extends StatelessWidget {
                                 isMe: isMe,
                                 currentChatId: currentChatId,
                               )
-                            : _buildMessageContent(context, theme)),
+                            : Linkify(
+                                onOpen: (l) => launchUrl(Uri.parse(l.url)),
+                                text: msg.text ?? "",
+                                style: TextStyle(
+                                  color: isMe
+                                      ? theme.colorScheme.onPrimary
+                                      : theme.colorScheme.onSurface,
+                                  fontSize: 15,
+                                ),
+                                linkStyle: TextStyle(
+                                  color: isMe ? Colors.white : Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 2, right: 2, left: 2),

@@ -37,12 +37,42 @@ class _TalkState extends State<Talk> {
       final chatProv = Provider.of<ChatProvider>(context, listen: false);
 
       if (auth.isLoggedIn) {
-        String? validToken = await auth.getFreshToken();
         String myUserId = auth.currentUser?.id ?? "";
+
+        if (myUserId.isNotEmpty) {
+          final profile = await UserService().getUserProfile(myUserId);
+          if (profile != null) {
+            auth.currentUser?.isAiModerationEnabled =
+                profile.isAiModerationEnabled;
+            setState(() {});
+          }
+        }
+
+        String? validToken = await auth.getFreshToken();
 
         if (validToken != null && myUserId.isNotEmpty) {
           chatProv.connectSocket(validToken, myUserId);
           chatProv.fetchInbox();
+
+          chatProv.onModerationBlocked = (chatId, userName, userId) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  "Akun $userName telah terblokir otomatis karena melanggar pedoman.",
+                ),
+                duration: const Duration(seconds: 5),
+                backgroundColor: Colors.redAccent,
+                action: SnackBarAction(
+                  label: "Buka",
+                  textColor: Colors.white,
+                  onPressed: () async {
+                    await UserService().unblockUser(userId);
+                    chatProv.fetchInbox();
+                  },
+                ),
+              ),
+            );
+          };
         }
       }
     });
@@ -69,10 +99,47 @@ class _TalkState extends State<Talk> {
     }
   }
 
+  void _showModerationDialog(BuildContext context, bool newValue) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          newValue ? "Aktifkan Moderasi AI?" : "Matikan Moderasi AI?",
+        ),
+        content: Text(
+          newValue
+              ? "Pesan yang dikirim kepada Anda akan disaring oleh AI. Pengguna yang mengirim pesan kasar berulang kali akan diblokir otomatis."
+              : "Pesan yang dikirim kepada Anda tidak akan difilter oleh AI. Semua pesan akan langsung dikirim kepada Anda.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () async {
+              final success = await UserService().updateModerationSetting(
+                newValue,
+              );
+              if (success) {
+                auth.currentUser?.isAiModerationEnabled = newValue;
+                setState(() {});
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text("Setuju"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final chatProvider = context.watch<ChatProvider>();
+    final authProvider = context.watch<AuthProvider>();
 
     final int unreadDirect = chatProvider.inbox
         .where((c) => !c.isGroup)
@@ -92,6 +159,29 @@ class _TalkState extends State<Talk> {
           ),
           centerTitle: false,
           scrolledUnderElevation: 0,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Row(
+                children: [
+                  const Text(
+                    "Moderasi AI",
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                  Transform.scale(
+                    scale: 0.7,
+                    child: Switch(
+                      value:
+                          authProvider.currentUser?.isAiModerationEnabled ??
+                          false,
+                      onChanged: (value) =>
+                          _showModerationDialog(context, value),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           bottom: TabBar(
             dividerColor: Colors.transparent,
             indicatorSize: TabBarIndicatorSize.label,
@@ -232,6 +322,7 @@ class _TalkState extends State<Talk> {
                   unreadCount: chat.unreadCount,
                   imageUrl: chat.imageUrl,
                   isGroup: chat.isGroup,
+                  isBlockedByMe: chat.isBlockedByMe,
                   targetUserId: chat.targetUserId,
                   targetUsername: chat.targetUsername,
                   isVerified: chat.isVerified,
@@ -253,6 +344,7 @@ class _TalkState extends State<Talk> {
     required int unreadCount,
     required String imageUrl,
     required bool isGroup,
+    bool isBlockedByMe = false,
     String? lastSenderName,
     String? targetUserId,
     String? targetUsername,
@@ -261,19 +353,26 @@ class _TalkState extends State<Talk> {
     final theme = Theme.of(context);
     String displayMessage = message;
 
-    if (message != "🚫 Pesan ini telah dihapus") {
-      if (lastSenderName == "Anda") {
-        if (isGroup) {
-          displayMessage = "Anda: $message";
-        } else {
-          displayMessage = message;
+    if (isBlockedByMe) {
+      displayMessage =
+          "Akun ini telah terblokir. Anda mungkin telah memblokir akun ini atau jika anda tidak merasa melakukannya, sistem moderasi mungkin telah memblokirnya untuk anda.";
+    } else {
+      if (message != "🚫 Pesan ini telah dihapus") {
+        if (lastSenderName == "Anda") {
+          if (isGroup) {
+            displayMessage = "Anda: $message";
+          } else {
+            displayMessage = message;
+          }
+        } else if (lastSenderName != null && lastSenderName.isNotEmpty) {
+          displayMessage = "$lastSenderName: $message";
         }
-      } else if (lastSenderName != null && lastSenderName.isNotEmpty) {
-        displayMessage = "$lastSenderName: $message";
       }
     }
 
-    if (message.contains('/join/') && message.startsWith('http')) {
+    if (!isBlockedByMe &&
+        message.contains('/join/') &&
+        message.startsWith('http')) {
       String invitePrefix = (lastSenderName == "Anda")
           ? "Anda: "
           : (lastSenderName != null ? "$lastSenderName: " : "");
@@ -334,10 +433,13 @@ class _TalkState extends State<Talk> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
+              fontSize: isBlockedByMe ? 12 : 14,
               fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
-              color: unreadCount > 0
-                  ? theme.colorScheme.onSurface
-                  : theme.colorScheme.onSurfaceVariant,
+              color: isBlockedByMe
+                  ? Colors.redAccent
+                  : (unreadCount > 0
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -394,39 +496,44 @@ class _TalkState extends State<Talk> {
             children: [
               if (!isGroup && targetUserId != null)
                 ListTile(
-                  leading: const Icon(Icons.block, color: Colors.red),
-                  title: const Text(
-                    "Blokir Pengguna",
-                    style: TextStyle(color: Colors.red),
+                  leading: Icon(
+                    isBlockedByMe ? Icons.lock_open : Icons.block,
+                    color: Colors.red,
+                  ),
+                  title: Text(
+                    isBlockedByMe ? "Buka Blokir Pengguna" : "Blokir Pengguna",
+                    style: const TextStyle(color: Colors.red),
                   ),
                   onTap: () async {
                     Navigator.pop(ctx);
-                    final bool? confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text("Blokir?"),
-                        content: const Text(
-                          "Pesan dari pengguna ini tidak akan muncul lagi di daftar chat Anda.",
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text("Batal"),
+                    if (isBlockedByMe) {
+                      await UserService().unblockUser(targetUserId);
+                      context.read<ChatProvider>().fetchInbox();
+                    } else {
+                      final bool? confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text("Blokir?"),
+                          content: const Text(
+                            "Pesan dari pengguna ini tidak akan muncul lagi di daftar chat Anda.",
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text(
-                              "Blokir",
-                              style: TextStyle(color: Colors.red),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text("Batal"),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (confirm == true) {
-                      await UserService().blockUser(targetUserId);
-                      if (mounted) {
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text(
+                                "Blokir",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await UserService().blockUser(targetUserId);
                         context.read<ChatProvider>().fetchInbox();
                       }
                     }

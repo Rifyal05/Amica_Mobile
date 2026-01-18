@@ -16,7 +16,6 @@ class UserService {
     return prefs.getString('auth_token');
   }
 
-  // 0
   Future<UserProfileData?> getUserProfile(String userId) async {
     try {
       final response = await _client.get(
@@ -173,7 +172,6 @@ class UserService {
     }
   }
 
-  // 1
   Future<Map<String, dynamic>> getSavedPosts(String targetUserId) async {
     try {
       final response = await _client.get(
@@ -197,7 +195,6 @@ class UserService {
     }
   }
 
-  // 2
   Future<bool> updateSavedPrivacy(bool isPublic) async {
     try {
       final response = await _client.patch(
@@ -299,7 +296,6 @@ class UserService {
     }
   }
 
-  // 3
   Future<Map<String, dynamic>> getFollowers(
     String userId,
     int page,
@@ -316,7 +312,6 @@ class UserService {
     throw Exception('Gagal memuat pengikut');
   }
 
-  // 4
   Future<Map<String, dynamic>> getFollowing(
     String userId,
     int page,
@@ -331,5 +326,17 @@ class UserService {
       return jsonDecode(response.body);
     }
     throw Exception('Gagal memuat mengikuti');
+  }
+
+  Future<bool> updateModerationSetting(bool enabled) async {
+    try {
+      final response = await _client.patch(
+        Uri.parse('${ApiConfig.baseUrl}/api/users/settings/moderation'),
+        body: jsonEncode({'enabled': enabled}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
   }
 }

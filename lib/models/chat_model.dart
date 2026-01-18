@@ -11,6 +11,7 @@ class ChatRoom {
   final String? targetUsername;
   final bool isHidden;
   final bool isVerified;
+  final bool isBlockedByMe;
 
   ChatRoom({
     required this.id,
@@ -25,6 +26,7 @@ class ChatRoom {
     this.targetUsername,
     this.isHidden = false,
     this.isVerified = false,
+    this.isBlockedByMe = false,
   });
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,7 @@ class ChatRoom {
       targetUsername: json['target_username'],
       isHidden: json['is_hidden'] ?? false,
       isVerified: json['target_user']?['is_verified'] ?? false,
+      isBlockedByMe: json['is_blocked_by_me'] ?? false,
     );
   }
 }
