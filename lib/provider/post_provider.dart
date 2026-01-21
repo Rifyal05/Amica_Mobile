@@ -8,8 +8,9 @@ import '../services/user_service.dart';
 import '../services/authenticated_client.dart';
 
 class PostProvider with ChangeNotifier {
-  final PostService _postService = PostService();
-  final AuthenticatedClient _authClient = AuthenticatedClient();
+  late final PostService _postService;
+  late final AuthenticatedClient _authClient;
+  late final UserService _userService;
 
   List<Post> _posts = [];
   bool _isLoading = false;
@@ -28,6 +29,16 @@ class PostProvider with ChangeNotifier {
   bool get isUploading => _isUploading;
   Map<String, dynamic>? get moderationError => _moderationError;
   String get currentFilter => _currentFilter;
+
+  PostProvider({
+    PostService? postService,
+    AuthenticatedClient? authClient,
+    UserService? userService,
+  }) {
+    _postService = postService ?? PostService();
+    _authClient = authClient ?? AuthenticatedClient();
+    _userService = userService ?? UserService();
+  }
 
   Future<void> setFilter(String filter) async {
     if (_currentFilter == filter) return;
@@ -179,8 +190,6 @@ class PostProvider with ChangeNotifier {
     }
   }
 
-  final UserService _userService = UserService();
-
   Future<void> toggleFollowFromFeed(String targetUserId) async {
     await _userService.followUser(targetUserId);
     await refreshPosts();
@@ -192,9 +201,7 @@ class PostProvider with ChangeNotifier {
       try {
         final existingPost = _posts.firstWhere((p) => p.id == cleanId);
         return existingPost;
-      } catch (_) {
-      }
-
+      } catch (_) {}
 
       final url = Uri.parse('${ApiConfig.baseUrl}/api/posts/detail/$cleanId');
       final response = await _authClient.get(url);

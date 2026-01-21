@@ -165,7 +165,7 @@ class ModerationDetailPage extends StatelessWidget {
                 child: Column(
                   children: [
                     CircularProgressIndicator(),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text(
                       "Sedang ditinjau oleh Admin...",
                       style: TextStyle(fontStyle: FontStyle.italic),
@@ -238,7 +238,7 @@ class ModerationDetailPage extends StatelessWidget {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

@@ -28,7 +28,9 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
   @override
   void initState() {
     super.initState();
-    _startUpload();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startUpload();
+    });
   }
 
   Future<void> _startUpload() async {
@@ -222,7 +224,7 @@ class _PostUploadStatusPageState extends State<PostUploadStatusPage> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

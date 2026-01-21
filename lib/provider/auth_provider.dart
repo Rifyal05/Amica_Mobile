@@ -5,11 +5,10 @@ import 'dart:convert';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../models/user_model.dart';
-import '../models/user_profile_model.dart';
 
 class AuthProvider with ChangeNotifier {
-  final AuthService _authService = AuthService();
-  final UserService _userService = UserService();
+  late final AuthService _authService;
+  late final UserService _userService;
 
   bool _isLoggedIn = false;
   User? _currentUser;
@@ -23,7 +22,10 @@ class AuthProvider with ChangeNotifier {
   bool get needsPasswordSet => _needsPasswordSet;
   List<String> get blockedUserIds => _blockedUserIds;
 
-  AuthProvider() {
+  AuthProvider({AuthService? authService, UserService? userService}) {
+    _authService = authService ?? AuthService();
+    _userService = userService ?? UserService();
+
     AuthService.sessionExpiredStream.listen((_) {
       performLogout();
     });

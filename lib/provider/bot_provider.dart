@@ -272,8 +272,9 @@ class BotProvider with ChangeNotifier {
                 final sessionMatch = sessionRegex.firstMatch(value);
                 final msgMatch = msgRegex.firstMatch(value);
 
-                if (sessionMatch != null)
+                if (sessionMatch != null) {
                   _currentSessionId = sessionMatch.group(1);
+                }
 
                 if (msgMatch != null &&
                     _messages.isNotEmpty &&
@@ -296,8 +297,9 @@ class BotProvider with ChangeNotifier {
                 _statusMessage = value
                     .replaceAll(RegExp(r'\[STATUS:.*?\]'), '')
                     .trim();
-                if (_statusMessage.isEmpty)
+                if (_statusMessage.isEmpty) {
                   _statusMessage = "Sedang berpikir...";
+                }
               } else if (value.contains("[HEARTBEAT]")) {
                 // Ignore
               } else {

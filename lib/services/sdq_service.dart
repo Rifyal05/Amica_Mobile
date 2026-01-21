@@ -4,7 +4,10 @@ import '../services/api_config.dart';
 import '../models/sdq_model.dart';
 
 class SdqService {
-  final AuthenticatedClient _client = AuthenticatedClient();
+  late final AuthenticatedClient _client;
+  SdqService({AuthenticatedClient? client}) {
+    _client = client ?? AuthenticatedClient();
+  }
 
   Future<SdqFullResult> submitAnswers(List<int> answers) async {
     final response = await _client.post(

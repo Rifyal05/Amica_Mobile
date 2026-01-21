@@ -11,14 +11,21 @@ class AdaptiveImageCard extends StatefulWidget {
 
 class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
   double? _aspectRatio;
+  bool _isValidUrl = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchImageInfo();
+    _checkAndFetch();
   }
 
-  void _fetchImageInfo() {
+  void _checkAndFetch() {
+    if (widget.imageUrl.isEmpty) {
+      _isValidUrl = false;
+      return;
+    }
+    _isValidUrl = true;
+
     final image = CachedNetworkImageProvider(
       widget.imageUrl,
       cacheKey: widget.imageUrl,
@@ -41,6 +48,10 @@ class _AdaptiveImageCardState extends State<AdaptiveImageCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     const double maxImageHeight = 380.0;
+
+    if (!_isValidUrl) {
+      return const SizedBox.shrink();
+    }
 
     if (_aspectRatio == null) {
       return AspectRatio(

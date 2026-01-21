@@ -23,11 +23,19 @@ import 'professional_info_page.dart';
 class UserProfilePage extends StatelessWidget {
   final User? user;
   final String? userId;
+  final ProfileProvider? provider;
 
-  const UserProfilePage({super.key, this.user, this.userId});
+  const UserProfilePage({super.key, this.user, this.userId, this.provider});
 
   @override
   Widget build(BuildContext context) {
+    if (provider != null) {
+      return ChangeNotifierProvider<ProfileProvider>.value(
+        value: provider!,
+        child: _UserProfileContent(user: user, userId: userId),
+      );
+    }
+
     return ChangeNotifierProvider(
       create: (_) => ProfileProvider(),
       child: _UserProfileContent(user: user, userId: userId),

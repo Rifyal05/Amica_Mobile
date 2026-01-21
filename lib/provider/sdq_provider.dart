@@ -3,13 +3,17 @@ import '../services/sdq_service.dart';
 import '../models/sdq_model.dart';
 
 class SdqProvider with ChangeNotifier {
-  final SdqService _service = SdqService();
+  late final SdqService _service;
 
   List<SdqHistoryItem> _history = [];
   bool _isLoading = false;
 
   List<SdqHistoryItem> get history => _history;
   bool get isLoading => _isLoading;
+
+  SdqProvider({SdqService? service}) {
+    _service = service ?? SdqService();
+  }
 
   Future<void> fetchHistory() async {
     _isLoading = true;

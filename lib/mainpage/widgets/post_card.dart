@@ -66,7 +66,9 @@ class _PostCardState extends State<PostCard>
   }
 
   String? _getAvatarUrl(String? url) {
-    return ApiConfig.getFullUrl(url);
+    final fullUrl = ApiConfig.getFullUrl(url);
+    if (fullUrl == null || fullUrl.isEmpty) return null;
+    return fullUrl;
   }
 
   String _formatTimeAgo(DateTime timestamp) {
@@ -474,7 +476,10 @@ class _PostCardState extends State<PostCard>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final hasImage = widget.post.fullImageUrl != null;
+    final hasImage =
+        widget.post.fullImageUrl != null &&
+        widget.post.fullImageUrl!.isNotEmpty;
+    final String? avatarUrl = _getAvatarUrl(widget.post.author.avatarUrl);
 
     return Stack(
       children: [
@@ -534,26 +539,30 @@ class _PostCardState extends State<PostCard>
                             backgroundColor:
                                 colorScheme.surfaceContainerHighest,
                             child: ClipOval(
-                              child: CachedNetworkImage(
-                                imageUrl:
-                                    _getAvatarUrl(
-                                      widget.post.author.avatarUrl,
-                                    ) ??
-                                    '',
-                                cacheManager: ProfileCacheManager.instance,
-                                fit: BoxFit.cover,
-                                width: 36,
-                                height: 36,
-                                placeholder: (context, url) =>
-                                    const CircularProgressIndicator(
-                                      strokeWidth: 1,
+                              child: (avatarUrl != null && avatarUrl.isNotEmpty)
+                                  ? CachedNetworkImage(
+                                      imageUrl: avatarUrl,
+                                      cacheManager:
+                                          ProfileCacheManager.instance,
+                                      fit: BoxFit.cover,
+                                      width: 36,
+                                      height: 36,
+                                      placeholder: (context, url) =>
+                                          const CircularProgressIndicator(
+                                            strokeWidth: 1,
+                                          ),
+                                      errorWidget: (context, url, error) =>
+                                          Icon(
+                                            Icons.person,
+                                            size: 20,
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                    )
+                                  : Icon(
+                                      Icons.person,
+                                      size: 20,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
-                                errorWidget: (context, url, error) => Icon(
-                                  Icons.person,
-                                  size: 20,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
                             ),
                           ),
                         ),

@@ -9,7 +9,11 @@ import '../models/user_profile_model.dart';
 import '../models/post_model.dart';
 
 class UserService {
-  final AuthenticatedClient _client = AuthenticatedClient();
+  late final AuthenticatedClient _client;
+
+  UserService({AuthenticatedClient? client}) {
+    _client = client ?? AuthenticatedClient();
+  }
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

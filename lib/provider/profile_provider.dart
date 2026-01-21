@@ -5,8 +5,8 @@ import '../services/user_service.dart';
 import '../services/post_service.dart';
 
 class ProfileProvider with ChangeNotifier {
-  final UserService _userService = UserService();
-  final PostService _postService = PostService();
+  late final UserService _userService;
+  late final PostService _postService;
 
   bool _isLoadingProfile = true;
   bool _isLoadingPosts = false;
@@ -37,6 +37,11 @@ class ProfileProvider with ChangeNotifier {
   bool get isLoadingSaved => _isLoadingSaved;
   bool get isSavedCollectionPrivate => _isSavedCollectionPrivate;
   bool get myPrivacySetting => _myPrivacySetting;
+
+  ProfileProvider({UserService? userService, PostService? postService}) {
+    _userService = userService ?? UserService();
+    _postService = postService ?? PostService();
+  }
 
   set errorMessage(String? msg) {
     _errorMessage = msg;

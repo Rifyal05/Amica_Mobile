@@ -46,9 +46,13 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  mockito:
+  build_runner: 
   flutter_lints: ^5.0.0
   change_app_package_name: ^1.5.0
+  firebase_core_platform_interface: ^6.0.2
+  integration_test:
+    sdk: flutter
 
 flutter:
 
