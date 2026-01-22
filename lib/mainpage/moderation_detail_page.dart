@@ -53,6 +53,7 @@ class ModerationDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
     final isDeletedByAdmin =
         post.moderationStatus == 'final_rejected' ||
         post.moderationStatus == 'quarantined';
@@ -96,27 +97,39 @@ class ModerationDetailPage extends StatelessWidget {
                       color: colorScheme.error,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Konten telah dihapus oleh Admin",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),
               ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               "Caption:",
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
             ),
-            Text(post.caption, style: theme.textTheme.bodyLarge),
+            Text(
+              post.caption,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
             const Divider(height: 40),
 
             if (!isDeletedByAdmin) ...[
-              _buildAnalysisCard(colorScheme),
+              _buildAnalysisCard(colorScheme, textTheme),
               const SizedBox(height: 20),
             ],
 
-            if (post.adminNote != null) _buildAdminNoteCard(colorScheme),
+            if (post.adminNote != null)
+              _buildAdminNoteCard(colorScheme, textTheme),
 
             const SizedBox(height: 32),
             if (post.moderationStatus == 'rejected') ...[
@@ -126,7 +139,7 @@ class ModerationDetailPage extends StatelessWidget {
                   onPressed: () => _showAppealDialog(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colorScheme.onPrimary,
                   ),
                   child: const Text("AJUKAN BANDING"),
                 ),
@@ -161,14 +174,17 @@ class ModerationDetailPage extends StatelessWidget {
                 ),
               ),
             ] else ...[
-              const Center(
+              Center(
                 child: Column(
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
                     Text(
                       "Sedang ditinjau oleh Admin...",
-                      style: TextStyle(fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -180,7 +196,7 @@ class ModerationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAnalysisCard(ColorScheme colorScheme) {
+  Widget _buildAnalysisCard(ColorScheme colorScheme, TextTheme textTheme) {
     final details = post.moderationDetails;
     if (details == null || details.isEmpty) return const SizedBox.shrink();
 
@@ -202,11 +218,11 @@ class ModerationDetailPage extends StatelessWidget {
                 size: 22,
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 "Analisis AI Amica",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.red,
+                  color: colorScheme.error,
                 ),
               ),
             ],
@@ -222,7 +238,10 @@ class ModerationDetailPage extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6),
               child: RichText(
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontSize: 13,
+                    color: colorScheme.onSurface,
+                  ),
                   children: [
                     TextSpan(text: "• $label: "),
                     TextSpan(
@@ -230,7 +249,7 @@ class ModerationDetailPage extends StatelessWidget {
                           ? "SAFE"
                           : entry.value.toString().toUpperCase(),
                       style: TextStyle(
-                        color: isSafe ? Colors.green : Colors.red,
+                        color: isSafe ? Colors.green : colorScheme.error,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -244,7 +263,7 @@ class ModerationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAdminNoteCard(ColorScheme colorScheme) {
+  Widget _buildAdminNoteCard(ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -274,7 +293,13 @@ class ModerationDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(post.adminNote!, style: const TextStyle(height: 1.5)),
+          Text(
+            post.adminNote!,
+            style: textTheme.bodyMedium?.copyWith(
+              height: 1.5,
+              color: colorScheme.onSurface,
+            ),
+          ),
         ],
       ),
     );
