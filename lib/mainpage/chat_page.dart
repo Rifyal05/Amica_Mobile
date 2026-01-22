@@ -62,8 +62,63 @@ class _ChatPageState extends State<ChatPage> {
       chatProv.markChatAsRead(widget.chatId);
 
       chatProv.onModerationWarning = (chatId, warning) {
-        if (chatId == widget.chatId && mounted) {
-          _showTopSnackbar(warning, isError: true);
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                  SizedBox(width: 8),
+                  Text("Peringatan Konten"),
+                ],
+              ),
+              content: Text(warning),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Saya Mengerti", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        }
+      };
+
+      chatProv.onModerationBlocked = (chatId, userName, userId) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.block_flipped, color: Colors.red, size: 28),
+                  SizedBox(width: 8),
+                  Text("Akun Terbatasi"),
+                ],
+              ),
+              content: Text(
+                "Interaksi dengan $userName telah dihentikan otomatis oleh Sistem Moderasi AI karena pelanggaran berulang terhadap Pedoman Komunitas.",
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _checkBlockStatus();
+                  },
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text("Tutup"),
+                ),
+              ],
+            ),
+          );
+          setState(() {
+            _iBlockedThisUser = true;
+          });
         }
       };
     });

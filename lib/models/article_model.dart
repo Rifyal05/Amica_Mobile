@@ -49,7 +49,7 @@ class Article {
     if (rawImg.startsWith('http')) {
       finalImgUrl = rawImg;
     } else if (rawImg.isNotEmpty) {
-      finalImgUrl = ApiConfig.getFullUrl(rawImg) ?? '';
+      finalImgUrl = ApiConfig.getFullUrl('static/uploads/articles/$rawImg') ?? '';
     } else {
       finalImgUrl = 'https://via.placeholder.com/400x200?text=No+Image';
     }
