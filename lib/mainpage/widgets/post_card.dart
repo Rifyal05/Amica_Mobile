@@ -76,7 +76,7 @@ class _PostCardState extends State<PostCard>
     if (diff.inDays > 7) return DateFormat('d MMM yyyy').format(timestamp);
     if (diff.inDays >= 1) return "${diff.inDays} hari yang lalu";
     if (diff.inHours >= 1) return "${diff.inHours} jam yang lalu";
-    if (diff.inMinutes >= 1) return "${diff.inMinutes} menit";
+    if (diff.inMinutes >= 1) return "${diff.inMinutes} menit yang lalu";
     return "Baru saja";
   }
 
