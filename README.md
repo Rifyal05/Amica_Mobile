@@ -1,7 +1,8 @@
 # Arsitektur Frontend Flutter (Amica Mobile)
 
 Dokumen ini memaparkan arsitektur, pola desain, sistem antarmuka, dan mekanisme operasional dari sisi klien aplikasi seluler Amica yang dikembangkan menggunakan kerangka kerja Flutter.
-
+## 0. UI GALERI
+- Lihat UI Galeri : [UI GALERI](UI_GALERY.md)
 ## 1. Ekosistem Proyek
 
 Aplikasi Flutter ini bertindak sebagai klien (Front-End) yang berkomunikasi secara langsung dengan layanan-layanan berikut:
