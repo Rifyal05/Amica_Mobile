@@ -1,4 +1,4 @@
-# Galeri Antarmuka (UI/UX) Amica Mobile
+# Galeri Antarmuka (UI/UX) Amica Mobile (Tidak Semua bagian UI ada di galeri ini.)
 
 Dokumen ini memuat pratinjau visual dari antarmuka aplikasi seluler Amica. Aplikasi ini dibangun dengan prinsip Material Design 3, mendukung adaptivitas tata letak, mode gelap/terang, dan aksesibilitas tipografi.
 
