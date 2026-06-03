@@ -16,7 +16,7 @@ Proyek disusun menggunakan pemisahan *layer* yang sangat ketat untuk memastikan 
 *   `/models`: Kelas data murni (Data Transfer Objects) dengan metode serialisasi JSON.
 *   `/provider`: Lapis *State Management* (ViewModel) yang mengatur logika bisnis dan state reaktif UI.
 *   `/services`: Lapis abstraksi infrastruktur untuk API HTTP, WebSocket, dan autentikasi.
-*   `/theme`: Konfigurasi warna, tipografi, dan mode gelap/terang berbasis Material 3.
+*   `/theme`: Konfigurasi warna.
 *   `/mainpage`: Kumpulan *screens* (View) utama aplikasi (Home, Chat, Profile, Discover).
 *   `/login`: Alur layar autentikasi, registrasi, lupa sandi, dan pembuatan PIN.
 *   `/navigation`: Manajemen rute bawah (Bottom Navigation Bar) dan tumpukan halaman.
