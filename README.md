@@ -104,7 +104,26 @@ Kompilasi produksi (Release) untuk perangkat Android (App Bundle):
 flutter build appbundle --release
 ```
 
+10.4. Konfigurasi Firebase & Google Sign-In (Wajib)
+Aplikasi ini membutuhkan konfigurasi Firebase yang valid agar fitur *Google OAuth* dan *Push Notification* dapat berjalan tanpa memicu `GoogleSignInExceptionCode.canceled`.
 
+1. Pastikan Anda telah menginstal [Firebase CLI](https://firebase.google.com/docs/cli) di sistem Anda.
+2. Hubungkan proyek Flutter dengan Firebase menggunakan perintah:
+   ```bash
+   flutterfire configure
+PENTING: Mencegah Error Google Login Lokal
+Saat menjalankan aplikasi di mode Debug (lokal), Google Sign-In akan menolak akses jika sertifikat SHA-1 komputer lokal Anda belum terdaftar.
+Dapatkan SHA-1 lokal dengan masuk ke folder android lalu jalankan perintah:
+```
+Windows: gradlew signingReport
+Mac/Linux: ./gradlew signingReport
+Salin nilai SHA1 pada bagian Variant: debug.
+```
+Buka Firebase Console -> Project Settings -> Your Apps (Pilih Android) -> Add Fingerprint.
+
+Tempelkan SHA-1 tersebut dan simpan.
+
+(Catatan: Jika Anda sebelumnya mengalami error, hapus/uninstall aplikasi Amica dari perangkat Anda sebelum menjalankan ulang flutter run).
 
 
 
