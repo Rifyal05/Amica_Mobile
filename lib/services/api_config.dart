@@ -1,5 +1,8 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ApiConfig {
-  static const String baseUrl = "https://withamica.my.id";
+  static String get baseUrl =>
+      dotenv.env['BASE_URL'] ?? "http://192.168.1.12:5000";
 
   static String? getFullUrl(String? url) {
     if (url == null || url.isEmpty) return null;
